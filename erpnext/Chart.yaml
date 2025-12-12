@@ -2,7 +2,7 @@ apiVersion: v2
 name: erpnext
 description: Kubernetes Helm Chart for the latest stable ERPNext branch
 icon: 
-  https://raw.githubusercontent.com/green-llama/green-llama/main/public/images/green_llama-logo-color-white.png
+  https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/images/green_llama-logo-color-white.png
 type: application
 version: 1.0.0
 appVersion: v15.91.2
