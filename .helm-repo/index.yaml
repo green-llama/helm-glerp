@@ -1,3 +1,46 @@
 apiVersion: v1
-entries: {}
-generated: "2025-12-11T20:35:05.648688792-06:00"
+entries:
+  erpnext:
+  - apiVersion: v2
+    appVersion: v15.91.2
+    created: "2025-12-11T20:38:19.120112185-06:00"
+    dependencies:
+    - alias: mariadb-subchart
+      condition: mariadb.enabled,mariadb-subchart.enabled
+      name: mariadb
+      repository: https://charts.bitnami.com/bitnami
+      version: 11.5.7
+    - alias: postgresql-subchart
+      condition: postgresql.enabled,postgresql-subchart.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 12.1.6
+    - alias: redis-cache
+      condition: redis-cache.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.15.2
+    - alias: redis-queue
+      condition: redis-queue.enabled
+      name: redis
+      repository: https://charts.bitnami.com/bitnami
+      version: 17.15.2
+    - alias: dragonfly-cache
+      condition: dragonfly-cache.enabled
+      name: dragonfly
+      repository: oci://ghcr.io/dragonflydb/dragonfly/helm
+      version: v1.34.2
+    - alias: dragonfly-queue
+      condition: dragonfly-queue.enabled
+      name: dragonfly
+      repository: oci://ghcr.io/dragonflydb/dragonfly/helm
+      version: v1.34.2
+    description: Kubernetes Helm Chart for the latest stable ERPNext branch
+    digest: d79699c4214ee25f42720c8d6b2922c8958b235adf651202e6405613aaec2569
+    icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
+    name: erpnext
+    type: application
+    urls:
+    - https://green-llama.github.io/helm-glerp/erpnext-1.0.0.tgz
+    version: 1.0.0
+generated: "2025-12-11T20:38:19.096604812-06:00"
