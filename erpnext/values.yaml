@@ -465,14 +465,14 @@ mariadb:
 dragonfly-cache:
   # Using DragonflyDB: https://www.dragonflydb.io/
   # https://github.com/dragonflydb/dragonfly/tree/main/helm/dragonfly
-  enabled: true
+  enabled: false
   # host: ""
   # No persistence for cache
 
 dragonfly-queue:
   # Using DragonflyDB: https://www.dragonflydb.io/
   # https://github.com/dragonflydb/dragonfly/tree/main/helm/dragonfly
-  enabled: true
+  enabled: false
   # host: ""
   # Persistence can be enabled for queue
   storage:
@@ -510,7 +510,7 @@ postgresql-sts:
 redis-cache:
   # To enable the classic Bitnami Redis subchart for cache, set enabled to true
   # and set dragonfly-cache.enabled to false.
-  enabled: false
+  enabled: true
   image:
     repository: bitnamilegacy/redis
     tag: "7.0"
@@ -519,7 +519,7 @@ redis-cache:
 redis-queue:
   # To enable the classic Bitnami Redis subchart for queue, set enabled to true
   # and set dragonfly-queue.enabled to false.
-  enabled: false
+  enabled: true
   image:
     repository: bitnamilegacy/redis
     tag: "7.0"
