@@ -412,7 +412,6 @@ jobs:
     affinity: {}
     tolerations: []
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
