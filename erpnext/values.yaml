@@ -17,8 +17,8 @@ externalRedis:
   queue: ""
 
 image:
-  repository: frappe/erpnext
-  tag: v15.91.2
+  repository: ghcr.io/green-llama/glerp-image
+  tag: dev
   pullPolicy: IfNotPresent
 
 nginx:
