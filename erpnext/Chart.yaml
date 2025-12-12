@@ -3,7 +3,7 @@ name: glerp
 description: Kubernetes Helm Chart for the latest stable ERPNext branch
 icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
 type: application
-version: 1.0.2
+version: 1.0.3
 appVersion: v15.91.2
 dependencies:
 - name: mariadb
