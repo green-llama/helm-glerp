@@ -279,7 +279,7 @@ persistence:
     enabled: true
     # existingClaim: ""
     size: 8Gi
-    storageClassName: longhorn
+    storageClass: longhorn
     accessModes:
     - ReadWriteMany
 
