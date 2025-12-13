@@ -3,10 +3,10 @@
 # Declare variables to be passed into your templates.
 
 # Configure external database host
-# dbHost: ""
-# dbPort: 3306
-# dbRootUser: ""
-# dbRootPassword: ""
+dbHost: erpnext-db-mariadb
+dbPort: 3306
+dbRootUser: root
+dbRootPassword: 'erpnextrootpass'
 # dbRds: false
 # dbExistingSecret: ""
 # dbExistingSecretPasswordKey: "password"
@@ -471,10 +471,7 @@ mariadb-subchart:
 # alias for mariadb-subchart.enabled for backward compatibility
 mariadb:
   enabled: false
-  dbHost: erpnext-db-mariadb
-  dbPort: 3306
-  dbRootUser: root
-  dbRootPassword: 'erpnextrootpass'
+
 dragonfly-cache:
   # Using DragonflyDB: https://www.dragonflydb.io/
   # https://github.com/dragonflydb/dragonfly/tree/main/helm/dragonfly
