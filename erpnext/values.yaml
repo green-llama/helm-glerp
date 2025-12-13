@@ -19,7 +19,7 @@ externalRedis:
 image:
   repository: ghcr.io/green-llama/glerp-image
   tag: dev
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 imagePullSecrets:
   - name: ghcr-cred
   
