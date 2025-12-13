@@ -279,11 +279,9 @@ persistence:
     enabled: true
     # existingClaim: ""
     size: 8Gi
-    # storageClass: "nfs"
+    storageClass: "longhorn"
     accessModes:
     - ReadWriteMany
-    storageClass:
-    - longhorn 
 
   logs:
     # Container based log search and analytics stack recommended
