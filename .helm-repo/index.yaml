@@ -3,7 +3,7 @@ entries:
   glerp:
   - apiVersion: v2
     appVersion: v15.91.2
-    created: "2025-12-13T21:19:41.01900785-06:00"
+    created: "2025-12-13T21:22:20.186499546-06:00"
     dependencies:
     - alias: mariadb-subchart
       condition: mariadb.enabled,mariadb-subchart.enabled
@@ -36,53 +36,11 @@ entries:
       repository: oci://ghcr.io/dragonflydb/dragonfly/helm
       version: v1.34.2
     description: Kubernetes Helm Chart for the latest stable ERPNext branch
-    digest: 76999f498c2c220566df3befc08d7638a44aace3e2d697aaa3cb92d116dc5724
+    digest: c3e53e8a40466a433454f98799f15691fc6d1866554ce1f194f5a23813862c8f
     icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
     name: glerp
     type: application
     urls:
     - https://green-llama.github.io/helm-glerp/glerp-1.0.6.tgz
     version: 1.0.6
-  - apiVersion: v2
-    appVersion: v15.91.2
-    created: "2025-12-13T21:19:40.988403814-06:00"
-    dependencies:
-    - alias: mariadb-subchart
-      condition: mariadb.enabled,mariadb-subchart.enabled
-      name: mariadb
-      repository: https://charts.bitnami.com/bitnami
-      version: 11.5.7
-    - alias: postgresql-subchart
-      condition: postgresql.enabled,postgresql-subchart.enabled
-      name: postgresql
-      repository: https://charts.bitnami.com/bitnami
-      version: 12.1.6
-    - alias: redis-cache
-      condition: redis-cache.enabled
-      name: redis
-      repository: https://charts.bitnami.com/bitnami
-      version: 17.15.2
-    - alias: redis-queue
-      condition: redis-queue.enabled
-      name: redis
-      repository: https://charts.bitnami.com/bitnami
-      version: 17.15.2
-    - alias: dragonfly-cache
-      condition: dragonfly-cache.enabled
-      name: dragonfly
-      repository: oci://ghcr.io/dragonflydb/dragonfly/helm
-      version: v1.34.2
-    - alias: dragonfly-queue
-      condition: dragonfly-queue.enabled
-      name: dragonfly
-      repository: oci://ghcr.io/dragonflydb/dragonfly/helm
-      version: v1.34.2
-    description: Kubernetes Helm Chart for the latest stable ERPNext branch
-    digest: 087bce79c0a5fec874ac28307a3e3d05d9d9e5d14cf8484cedd6c5b582c73ffd
-    icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
-    name: glerp
-    type: application
-    urls:
-    - https://green-llama.github.io/helm-glerp/glerp-1.0.5.tgz
-    version: 1.0.5
-generated: "2025-12-13T21:19:40.965564861-06:00"
+generated: "2025-12-13T21:22:20.146399846-06:00"
