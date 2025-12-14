@@ -363,13 +363,13 @@ jobs:
     - "frappe_theme"
     - "erpnext_email_parser"
     - "hrms"
-    - "glerp_braintree_webhooks"
     - "glerp_audience"
     - "newsletter"
     - "blog"
     - "eps"
     - "offsite_backups"
     - "POS-Awesome-V15"
+    - "glerp_braintree_webhooks"
     dbType: "mariadb"
     backoffLimit: 0
     resources: {}
