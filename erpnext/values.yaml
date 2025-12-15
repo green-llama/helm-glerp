@@ -368,7 +368,9 @@ jobs:
     - "blog"
     - "eps"
     - "offsite_backups"
-    - "POS-Awesome-V15"
+    - "posawesome"
+    - "payments"
+    - "webshop"
     - "glerp_braintree_webhooks"
     dbType: "mariadb"
     backoffLimit: 0
