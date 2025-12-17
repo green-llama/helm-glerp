@@ -540,7 +540,7 @@ ingressRoute:
   enabled: true
   name: customer-name
   namespace: traefik-system
-  ingressClass: traefik
+  ingressClass: traefikcd ./
   entryPoints:
     - websecure
   match: "Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)"
