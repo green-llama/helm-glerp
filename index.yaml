@@ -3,15 +3,7 @@ entries:
   glerp:
   - apiVersion: v2
     appVersion: v15.91.2
-<<<<<<< HEAD
-<<<<<<< HEAD
-    created: "2025-12-16T15:18:28.472702459-06:00"
-=======
-    created: "2025-12-17T16:07:25.552492719-06:00"
->>>>>>> main
-=======
     created: "2025-12-17T18:31:39.981349018-06:00"
->>>>>>> main
     dependencies:
     - alias: mariadb-subchart
       condition: mariadb.enabled,mariadb-subchart.enabled
@@ -49,16 +41,6 @@ entries:
     name: glerp
     type: application
     urls:
-<<<<<<< HEAD
-    - https://green-llama.github.io/helm-glerp/glerp-1.0.8.tgz
-    version: 1.0.8
-generated: "2025-12-16T15:18:28.433843766-06:00"
-=======
     - https://green-llama.github.io/helm-glerp/glerp-1.0.9.tgz
     version: 1.0.9
-<<<<<<< HEAD
-generated: "2025-12-17T16:07:25.510684928-06:00"
->>>>>>> main
-=======
 generated: "2025-12-17T18:31:39.952496645-06:00"
->>>>>>> main
