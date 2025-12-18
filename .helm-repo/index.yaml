@@ -6,6 +6,7 @@ entries:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     created: "2025-12-16T15:18:28.472702459-06:00"
 =======
     created: "2025-12-17T16:07:25.552492719-06:00"
@@ -15,6 +16,9 @@ entries:
 >>>>>>> main
 =======
     created: "2025-12-18T08:10:41.594112634-06:00"
+>>>>>>> main
+=======
+    created: "2025-12-18T14:54:57.813696839-06:00"
 >>>>>>> main
     dependencies:
     - alias: mariadb-subchart
@@ -70,5 +74,9 @@ generated: "2025-12-17T18:31:39.952496645-06:00"
 =======
     - https://green-llama.github.io/helm-glerp/glerp-1.0.10.tgz
     version: 1.0.10
+<<<<<<< HEAD
 generated: "2025-12-18T08:10:41.566079496-06:00"
+>>>>>>> main
+=======
+generated: "2025-12-18T14:54:57.785955804-06:00"
 >>>>>>> main
