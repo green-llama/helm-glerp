@@ -536,6 +536,7 @@ redis-queue:
     repository: bitnamilegacy/redis
     tag: "7.0"
   # Values passed to the bitnami/redis subchart can be defined here.
+<<<<<<< HEAD
 ingressRoute:
   enabled: true
   name: customer-name
@@ -549,3 +550,26 @@ ingressRoute:
     namespace: customer-name
     port: 8080
     scheme: http
+=======
+extraObjects:
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        kubernetes.io/ingress.class: traefik
+      name: customer-name
+      namespace: traefik-system
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(customer-name.greenllama.tech) && PathPrefix(/)
+          services:
+            - name: glerp
+              namespace: customer-name
+              port: 8080
+              scheme: http
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+>>>>>>> main
