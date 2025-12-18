@@ -1,8 +1,19 @@
 # Contents
 
-### Frappe/ERPNext Helm Chart
+### Glerp Helm Chart
 
-Helm Chart to deploy a *frappe-bench*-like environment on Kubernetes. It adds following resources:
+Helm Chart to deploy a *frappe-bench*-like environment on Kubernetes. 
+
+
+### Glerp Helm Chart 
+
+1. This resource use the glerp-helm forked repo
+2. Go inside erpnext directory and change Chart.yaml to update the version anytime you re-package the helmchart
+3. 
+
+
+
+### Resources Included :
 
 ConfigMaps:
 
@@ -46,8 +57,8 @@ Jobs:
 
 PVC:
 
-- `erpnext` persistent volume claim is used to allocate volume for sites and config deployed with this release
-- `erpnext-logs` persistent volume claim is used to allocate volume for logs
+- `glerp` persistent volume claim is used to allocate volume for sites and config deployed with this release
+- `glerp-logs` persistent volume claim is used to allocate volume for logs
 
 Secrets:
 
@@ -61,7 +72,11 @@ Services:
 
 ServiceAccounts:
 
-- `erpnext` service account is used by all deployments.
+- `glerp` service account is used by all deployments.
+
+Extra Objects:
+
+- `extraObjects` parameter exposed to include your customized resource definitions
 
 ### Release Wizard
 
