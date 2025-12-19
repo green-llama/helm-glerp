@@ -20,7 +20,7 @@ image:
   repository: ghcr.io/green-llama/glerp-image
   tag: dev
   pullPolicy: Always
-  
+
 imagePullSecrets:
   - name: ghcr-cred
   
@@ -551,7 +551,7 @@ extraObjects:
         - websecure
       routes:
         - kind: Rule
-          match: Host(customer-name.greenllama.tech) && PathPrefix(/)
+          match: Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)
           services:
             - name: glerp
               namespace: customer-name
