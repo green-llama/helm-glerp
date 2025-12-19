@@ -3,10 +3,10 @@
 # Declare variables to be passed into your templates.
 
 # Configure external database host
-dbHost: mariadb
-dbPort: 3306
-dbRootUser: root
-dbRootPassword: 'erpnextrootpass'
+#dbHost: mariadb
+#dbPort: 3306
+#dbRootUser: root
+#dbRootPassword: 'erpnextrootpass'
 # dbRds: false
 # dbExistingSecret: ""
 # dbExistingSecretPasswordKey: "password"
@@ -20,7 +20,9 @@ image:
   repository: ghcr.io/green-llama/glerp-image
   tag: dev
   pullPolicy: Always
-
+  
+imagePullSecrets:
+  - name: ghcr-cred
   
 nginx:
   replicaCount: 1
@@ -443,14 +445,14 @@ securityContext:
   # runAsUser: 1000
 
 mariadb-sts:
-  enabled: false
+  enabled: true
   image:
     repository: mariadb
     tag: "10.6"
     pullPolicy: IfNotPresent
   rootPassword: "changeit"
   persistence:
-    # storageClass: "nfs"
+    storageClass: longhorn
     size: 8Gi
   resources: {}
   myCnf: |
