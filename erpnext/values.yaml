@@ -373,7 +373,7 @@ jobs:
     - "payments"
     - "webshop"
     - "glerp_braintree_webhooks"
-    dbType: "mariadb"
+    dbType: "mariadb-sts"
     backoffLimit: 0
     resources: {}
     nodeSelector: {}
