@@ -20,7 +20,9 @@ image:
   repository: ghcr.io/green-llama/glerp-image
   tag: dev
   pullPolicy: Always
-
+  
+imagePullSecrets:
+  - name: ghcr-cred
   
 nginx:
   replicaCount: 1
