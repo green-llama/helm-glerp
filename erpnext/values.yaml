@@ -280,7 +280,7 @@ persistence:
     enabled: true
     # existingClaim: ""
     size: 8Gi
-    storageClass: longhorn
+    storageClass: longhorn-crypto-rwm
     accessModes:
     - ReadWriteMany
 
@@ -452,16 +452,36 @@ mariadb-sts:
     pullPolicy: IfNotPresent
   rootPassword: "changeit"
   persistence:
-    storageClass: longhorn
+    storageClass: longhorn-crypto-mariadb-rwo
     size: 8Gi
-  resources: {}
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
   myCnf: |
     [mysqld]
+    # Character Set - Required for GLerp compatibility
     skip-character-set-client-handshake
     skip-innodb-read-only-compressed
     character-set-server=utf8mb4
     collation-server=utf8mb4_unicode_ci
 
+    # Memory Architecture: Focused on RAM-Residency
+    # 2GB allows 160k+ items & 1 year of GL entries to live in memory
+    innodb_buffer_pool_size = 2G
+    innodb_buffer_pool_instances = 2
+
+    # Transaction Log: High-volume write optimization
+    innodb_log_file_size = 512M
+    innodb_flush_log_at_trx_commit = 2
+
+    # Connection Management: Prevents "Connection Exhaustion" errors
+    max_connections = 100
+    tmp_table_size = 64M
+    max_heap_table_size = 64M
 
 mariadb-subchart:
   # To enable the classic Bitnami MariaDB subchart, set enabled to true
