@@ -56,21 +56,22 @@ jobs:
     dbType: mariadb
     installApps:
       - erpnext
-      - frappe_theme
+      - payments
+      - webshop
+      - glerp_frappe_theme
       - erpnext_email_parser
+      - glerp_branding
       - hrms
+      - dfp_external_storage
+      - glerp_webtools
+      - glerp_bigbulk_import
+      - glerp_braintree_webhooks
       - glerp_audience
       - newsletter
       - blog
       - eps
       - offsite_backups
       - posawesome
-      - payments
-      - webshop
-      - glerp_braintree_webhooks
-      - dfp_external_storage
-      - glerp_frappe_theme
-      - glerp_branding
 
 dragonfly-cache:
   enabled: true
