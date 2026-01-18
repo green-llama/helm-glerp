@@ -55,10 +55,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "erpnext.serviceAccountName" -}}
+{{- $defaultName := printf "%s-sa" .Release.Namespace -}}
 {{- if .Values.serviceAccount.create -}}
-    {{ default (include "erpnext.fullname" .) .Values.serviceAccount.name }}
+{{ default $defaultName .Values.serviceAccount.name }}
 {{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
+{{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
 

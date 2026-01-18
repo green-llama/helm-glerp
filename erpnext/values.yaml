@@ -35,12 +35,18 @@ nginx:
   # config: |
   #   # custom conf /etc/nginx/conf.d/default.conf
   environment:
-    upstreamRealIPAddress: "127.0.0.1"
-    upstreamRealIPRecursive: "off"
-    upstreamRealIPHeader: "X-Forwarded-For"
-    frappeSiteNameHeader: "$host"
-    proxyReadTimeout: "120"
-    clientMaxBodySize: "50m"
+    upstreamRealIPAddress: null
+    upstreamRealIPRecursive: null
+    upstreamRealIPHeader: null
+    frappeSiteNameHeader: null
+    proxyReadTimeout: null
+    clientMaxBodySize: null
+    UPSTREAM_REAL_IP_ADDRESS: "127.0.0.1"
+    UPSTREAM_REAL_IP_RECURSIVE: "off"
+    UPSTREAM_REAL_IP_HEADER: "X-Forwarded-For"
+    FRAPPE_SITE_NAME_HEADER: "$host"
+    PROXY_READ_TIMEOUT: "120"
+    CLIENT_MAX_BODY_SIZE: "500m"
   livenessProbe:
     tcpSocket:
       port: 8080
@@ -279,7 +285,7 @@ persistence:
   worker:
     enabled: true
     # existingClaim: ""
-    size: 8Gi
+    size: 5Gi
     storageClass: longhorn-crypto-rwm
     accessModes:
     - ReadWriteMany
@@ -297,7 +303,7 @@ persistence:
 ingress:
   # ingressName: ""
   # className: ""
-  enabled: true
+  enabled: false
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -373,6 +379,9 @@ jobs:
     - "payments"
     - "webshop"
     - "glerp_braintree_webhooks"
+    - "dfp_external_storage"
+    - "glerp_frappe_theme"
+    - "glerp_branding"
     dbType: "mariadb"
     backoffLimit: 0
     resources: {}
@@ -432,6 +441,14 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
+  # Default name aligns with namespace to simplify Vault/ESO bindings; override to reuse an existing SA.
+  name: ""
+
+rbac:
+  secretReader:
+    enabled: true
+    name: ""
+    bindingName: ""
 
 podSecurityContext:
   supplementalGroups: [1000]
@@ -482,6 +499,10 @@ mariadb-sts:
     max_connections = 100
     tmp_table_size = 64M
     max_heap_table_size = 64M
+<<<<<<< HEAD
+
+=======
+>>>>>>> main
 
 mariadb-subchart:
   # To enable the classic Bitnami MariaDB subchart, set enabled to true
@@ -558,24 +579,4 @@ redis-queue:
     repository: bitnamilegacy/redis
     tag: "7.0"
   # Values passed to the bitnami/redis subchart can be defined here.
-extraObjects:
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      annotations:
-        kubernetes.io/ingress.class: traefik
-      name: customer-name
-      namespace: traefik-system
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: glerp
-              namespace: customer-name
-              port: 8080
-              scheme: http
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
+extraObjects: []
