@@ -1,0 +1,80 @@
+name: Deploy GLerp Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: Helm release name
+        required: true
+        default: glerp
+      namespace:
+        description: Target namespace
+        required: true
+        default: glerp
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        default: dev
+      values_file:
+        description: Path to values file to use (repo-relative)
+        required: true
+        default: erpnext/values.new-tenant.example.yaml
+  repository_dispatch:
+    types:
+      - image-published
+
+env:
+  CHART_PATH: erpnext
+  IMAGE_REPOSITORY: ghcr.io/green-llama/glerp-image
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        run: |
+          echo "${KUBECONFIG_B64}" | base64 -d > "${HOME}/.kube/config"
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Write override values from secret (optional)
+        if: env.HELM_VALUES_B64 != ''
+        run: |
+          echo "${HELM_VALUES_B64}" | base64 -d > override-values.yaml
+        env:
+          HELM_VALUES_B64: ${{ secrets.HELM_VALUES_B64 }}
+
+      - name: Deploy chart
+        env:
+          RELEASE_NAME: ${{ inputs.release_name || github.event.client_payload.release_name || 'glerp' }}
+          NAMESPACE: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.event.client_payload.image_tag || 'dev' }}
+          INPUT_VALUES_FILE: ${{ inputs.values_file || github.event.client_payload.values_file || 'erpnext/values.new-tenant.example.yaml' }}
+        run: |
+          set -euo pipefail
+
+          VALUES_ARGS=""
+          if [ -f "${INPUT_VALUES_FILE}" ]; then
+            VALUES_ARGS="-f ${INPUT_VALUES_FILE}"
+          fi
+          if [ -f override-values.yaml ]; then
+            VALUES_ARGS="${VALUES_ARGS} -f override-values.yaml"
+          fi
+
+          helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            --set image.repository="${IMAGE_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            ${VALUES_ARGS}
