@@ -54,6 +54,18 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
 
+      - name: Set current context
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          set -euo pipefail
+          ctx=$(kubectl config get-contexts -o name | head -n1)
+          if [ -z "$ctx" ]; then
+            echo "No contexts found in kubeconfig" >&2
+            exit 1
+          fi
+          kubectl config use-context "$ctx"
+
       - name: Show kubeconfig contexts
         env:
           KUBECONFIG: /home/runner/.kube/config
