@@ -1,0 +1,296 @@
+# Values for tenant "ciclo" using Longhorn + MinIO architecture
+
+image:
+  repository: ghcr.io/green-llama/glerp-image
+  tag: dev
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: ghcr-cred
+
+serviceAccount:
+  create: true
+  name: "ciclo-sa"
+
+rbac:
+  secretReader:
+    enabled: true
+
+nginx:
+  environment:
+    UPSTREAM_REAL_IP_ADDRESS: "127.0.0.1"
+    UPSTREAM_REAL_IP_RECURSIVE: "off"
+    UPSTREAM_REAL_IP_HEADER: "X-Forwarded-For"
+    FRAPPE_SITE_NAME_HEADER: "$host"
+    PROXY_READ_TIMEOUT: "120"
+    CLIENT_MAX_BODY_SIZE: "500m"
+
+persistence:
+  worker:
+    enabled: true
+    size: 5Gi
+    storageClass: longhorn-crypto-rwm
+    accessModes:
+      - ReadWriteMany
+  logs:
+    enabled: false
+
+mariadb-sts:
+  enabled: true
+  rootPassword: changeit
+  persistence:
+    storageClass: longhorn-crypto-mariadb-rwo
+    size: 8Gi
+
+ingress:
+  enabled: false
+
+jobs:
+  createSite:
+    enabled: true
+    siteName: "ciclo.greenllama.tech"
+    adminPassword: changeit
+    dbType: mariadb
+    installApps:
+      - erpnext
+      - payments
+      - webshop
+      - glerp_frappe_theme
+      - erpnext_email_parser
+      - glerp_branding
+      - hrms
+      - dfp_external_storage
+      - glerp_webtools
+      - glerp_bigbulk_import
+      - glerp_braintree_webhooks
+      - glerp_audience
+      - newsletter
+      - blog
+      - eps
+      - offsite_backups
+      - posawesome
+
+dragonfly-cache:
+  enabled: true
+
+dragonfly-queue:
+  enabled: true
+  storage:
+    enabled: false
+
+extraObjects:
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: apps-ca-trust
+      namespace: ciclo
+      finalizers:
+        - externalsecrets.external-secrets.io/externalsecret-cleanup
+    spec:
+      refreshInterval: 1h0m0s
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: kubernetes-token-auth
+      target:
+        name: apps-ca-trust
+        creationPolicy: Owner
+        deletionPolicy: Retain
+        template:
+          type: Opaque
+          engineVersion: v2
+          data:
+            ca.crt: |
+              {{ .root_ca }}
+              {{ .intermediate_ca }}
+            intermediate.crt: |
+              {{ .intermediate_ca }}
+            root.crt: |
+              {{ .root_ca }}
+      data:
+        - secretKey: root_ca
+          remoteRef:
+            key: root-ca-secret
+            property: tls.crt
+        - secretKey: intermediate_ca
+          remoteRef:
+            key: apps-int-ca-secret
+            property: tls.crt
+
+  - apiVersion: cert-manager.io/v1
+    kind: Certificate
+    metadata:
+      name: ciclo-leaf-cert
+      namespace: ciclo
+    spec:
+      dnsNames:
+        - "*.ciclo.svc"
+        - "*.ciclo.svc.cluster.local"
+        - "*.greenllama.tech"
+      duration: 2160h
+      renewBefore: 360h
+      ipAddresses:
+        - 127.0.0.1
+        - "::1"
+      issuerRef:
+        group: cert-manager.io
+        kind: ClusterIssuer
+        name: apps-general-signer
+      secretName: ciclo-leaf-cert
+
+  - apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: ciclo-minio-creds
+      namespace: ciclo
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault-backend
+      target:
+        name: ciclo-minio-creds
+        creationPolicy: Owner
+        template:
+          engineVersion: v2
+          data:
+            accesskey: "{{ .accesskey }}"
+            secretkey: "{{ .secretkey }}"
+            config.env: |
+              export MINIO_ROOT_USER="{{ .accesskey }}"
+              export MINIO_ROOT_PASSWORD="{{ .secretkey }}"
+      data:
+        - secretKey: accesskey
+          remoteRef:
+            key: secret/data/ciclo/minio-creds
+            property: accesskey
+        - secretKey: secretkey
+          remoteRef:
+            key: secret/data/ciclo/minio-creds
+            property: secretkey
+
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: ciclo
+      namespace: traefik-system
+      annotations:
+        kubernetes.io/ingress.class: traefik
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`ciclo.greenllama.tech`) && PathPrefix(`/`)
+          services:
+            - name: glerp
+              namespace: ciclo
+              port: 8080
+              scheme: http
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: minio-ciclo
+      namespace: ciclo
+      annotations:
+        kubernetes.io/ingress.class: traefik
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`minio-ciclo.greenllama.tech`) && PathPrefix(`/`)
+          services:
+            - name: minio
+              port: 80
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+
+  - apiVersion: minio.min.io/v2
+    kind: Tenant
+    metadata:
+      name: ciclo-minio-tenant
+      namespace: ciclo
+    spec:
+      mountPath: /export
+      configuration:
+        name: ciclo-minio-creds
+      env:
+        - name: MINIO_SERVER_URL
+          value: https://minio-ciclo.greenllama.tech
+        - name: MINIO_BROWSER_REDIRECT_URL
+          value: https://minio-ciclo.greenllama.tech
+        - name: MINIO_KMS_VAULT_ENABLE
+          value: "on"
+        - name: MINIO_KMS_VAULT_ENDPOINT
+          value: http://vault-active.vault-system.svc.cluster.local:8200
+        - name: MINIO_KMS_VAULT_AUTH_TYPE
+          value: jwt
+        - name: MINIO_KMS_VAULT_ROLE
+          value: ciclo-role
+        - name: MINIO_KMS_VAULT_KEY_NAME
+          value: minio-key
+        - name: MINIO_KMS_VAULT_JWT_PATH
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+      buckets:
+        - name: ciclo
+          region: us-east-1
+          objectLock: false
+      pools:
+        - name: pool-0
+          servers: 2
+          volumesPerServer: 2
+          volumeClaimTemplate:
+            metadata:
+              name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: directpv-min-io
+              resources:
+                requests:
+                  storage: 512Mi
+          containerSecurityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          securityContext:
+            fsGroup: 1000
+        - name: pool-1
+          servers: 2
+          volumesPerServer: 2
+          volumeClaimTemplate:
+            metadata:
+              name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: directpv-min-io
+              resources:
+                requests:
+                  storage: 512Mi
+          containerSecurityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          securityContext:
+            fsGroup: 1000
+      poolsMetadata:
+        annotations:
+          sidecar.istio.io/inject: "true"
+          traffic.sidecar.istio.io/includeInboundPorts: "10443"
+          traffic.sidecar.istio.io/includeOutboundPorts: "8200"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9000, 9090"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9000, 9090"
+      requestAutoCert: false
+      prometheusOperator: false
+      features:
+        bucketDNS: false
+        enableSFTP: false
+      podManagementPolicy: Parallel
+      subPath: /data
+      serviceAccountName: ciclo-sa
