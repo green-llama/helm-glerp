@@ -60,6 +60,13 @@ jobs:
         run: |
           kubectl config get-contexts || true
 
+      - name: Show kubeconfig server
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          kubectl config view --raw --minify | grep server || true
+
+
       - name: Write override values from secret (optional)
         if: env.HELM_VALUES_B64 != ''
         run: |
