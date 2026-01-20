@@ -54,6 +54,12 @@ jobs:
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
 
+      - name: Show kubeconfig contexts
+        env:
+          KUBECONFIG: ${{ env.HOME }}/.kube/config
+        run: |
+          kubectl config get-contexts || true
+
       - name: Write override values from secret (optional)
         if: env.HELM_VALUES_B64 != ''
         run: |
@@ -67,6 +73,7 @@ jobs:
           NAMESPACE: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
           IMAGE_TAG: ${{ inputs.image_tag || github.event.client_payload.image_tag || 'dev' }}
           INPUT_VALUES_FILE: ${{ inputs.values_file || github.event.client_payload.values_file || 'erpnext/values.new-tenant.example.yaml' }}
+          KUBECONFIG: ${{ env.HOME }}/.kube/config
         run: |
           set -euo pipefail
 
