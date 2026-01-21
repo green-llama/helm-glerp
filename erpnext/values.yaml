@@ -500,10 +500,6 @@ mariadb-sts:
     max_connections = 100
     tmp_table_size = 64M
     max_heap_table_size = 64M
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 
 mariadb-subchart:
   # To enable the classic Bitnami MariaDB subchart, set enabled to true
