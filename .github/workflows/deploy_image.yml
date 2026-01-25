@@ -87,7 +87,8 @@ jobs:
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets --create-namespace \
             --set installCRDs=true --wait --timeout 180s
-          kubectl get crd externalsecrets.external-secrets.io
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s
+          kubectl api-resources --api-group=external-secrets.io
 
 
       - name: Write override values from secret (optional)
