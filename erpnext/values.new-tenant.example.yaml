@@ -143,7 +143,7 @@ extraObjects:
       secretName: TENANT_NAMESPACE-leaf-cert
 
   # Vault-backed MinIO bootstrap creds pulled via ESO
-  - apiVersion: external-secrets.io/v1beta1
+  - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: TENANT_NAMESPACE-minio-creds

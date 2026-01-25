@@ -137,7 +137,7 @@ extraObjects:
         name: apps-general-signer
       secretName: ciclo-leaf-cert
 
-  - apiVersion: external-secrets.io/v1beta1
+  - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: ciclo-minio-creds
