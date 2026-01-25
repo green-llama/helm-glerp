@@ -78,6 +78,17 @@ jobs:
         run: |
           kubectl config view --raw --minify | grep server || true
 
+      - name: Install External Secrets Operator (with CRDs)
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets --create-namespace \
+            --set installCRDs=true --wait --timeout 180s
+          kubectl get crd externalsecrets.external-secrets.io
+
 
       - name: Write override values from secret (optional)
         if: env.HELM_VALUES_B64 != ''
