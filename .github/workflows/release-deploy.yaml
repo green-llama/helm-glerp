@@ -1,0 +1,86 @@
+name: Release and Deploy GLERP Chart
+
+env:
+  CHART_DIR: erpnext
+  CHART_NAME: glerp
+  OCI_REPO: ghcr.io/${{ github.repository_owner }}/helm-charts
+  HELM_EXPERIMENTAL_OCI: 1
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "erpnext/**"
+      - "glerpSiteInstallTemplate"
+      - "chartpress.yaml"
+      - "values*.yaml"
+      - ".github/workflows/release-deploy.yaml"
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Determine chart version
+        id: version
+        run: |
+          ver=$(helm show chart $CHART_DIR | awk '/^version:/ {print $2}')
+          echo "version=$ver" >> $GITHUB_OUTPUT
+
+      - name: Lint chart
+        run: helm lint $CHART_DIR
+
+      - name: Package chart
+        run: |
+          helm package $CHART_DIR --version "${{ steps.version.outputs.version }}" -d dist
+
+      - name: Login to GHCR (OCI)
+        run: echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Push chart to GHCR
+        run: |
+          helm push dist/${CHART_NAME}-${{ steps.version.outputs.version }}.tgz oci://$OCI_REPO
+
+      - name: Upload packaged chart artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart
+          path: dist/${CHART_NAME}-${{ steps.version.outputs.version }}.tgz
+
+  deploy:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Write kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > ~/.kube/config
+
+      - name: Install External Secrets Operator
+        run: |
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets --create-namespace
+
+      - name: Deploy chart from GHCR
+        env:
+          VERSION: ${{ needs.build-and-publish.outputs.version || '' }}
+        run: |
+          # pull latest version from GHCR if VERSION not set
+          if [ -z "$VERSION" ]; then
+            VERSION=$(helm show chart oci://$OCI_REPO/$CHART_NAME | awk '/^version:/ {print $2}')
+          fi
+          helm upgrade --install $CHART_NAME oci://$OCI_REPO/$CHART_NAME \
+            --version $VERSION \
+            --namespace ${{ secrets.TENANT_NAMESPACE }} --create-namespace \
+            --set helmVar_TENANT_NAMESPACE=${{ secrets.TENANT_NAMESPACE }} \
+            --set helmVar_DOMAIN=${{ secrets.DOMAIN }}
