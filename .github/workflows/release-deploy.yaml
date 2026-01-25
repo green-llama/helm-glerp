@@ -69,7 +69,9 @@ jobs:
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
           helm upgrade --install external-secrets external-secrets/external-secrets \
-            --namespace external-secrets --create-namespace
+            --namespace external-secrets --create-namespace \
+            --set installCRDs=true --wait --timeout 180s
+          kubectl get crd externalsecrets.external-secrets.io
 
       - name: Deploy chart from GHCR
         env:
