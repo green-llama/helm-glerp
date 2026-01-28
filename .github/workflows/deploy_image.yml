@@ -90,6 +90,55 @@ jobs:
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s
           kubectl api-resources --api-group=external-secrets.io
 
+      - name: Install Vault CLI
+        run: |
+          set -euo pipefail
+          VAULT_VERSION=1.15.6
+          curl -fsSL https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip -o /tmp/vault.zip
+          unzip -o /tmp/vault.zip -d /tmp
+          install -m 0755 /tmp/vault /usr/local/bin/vault || {
+            mkdir -p "$HOME/bin"
+            mv /tmp/vault "$HOME/bin/vault"
+            echo "$HOME/bin" >> "$GITHUB_PATH"
+          }
+
+      - name: Bootstrap Vault policy/role and GHCR creds
+        if: env.VAULT_ADDR != '' && env.VAULT_ROLE_ID != '' && env.VAULT_SECRET_ID != ''
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_SECRET_ID }}
+          VAULT_K8S_MOUNT: ${{ secrets.VAULT_K8S_MOUNT || 'kubernetes' }}
+          VAULT_SHARED_GHCR_PATH: ${{ secrets.VAULT_SHARED_GHCR_PATH || 'secret/data/shared/ghcr-creds' }}
+          DOCKERCONFIGJSON_B64: ${{ secrets.DOCKERCONFIGJSON_B64 }}
+          TENANT: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+        run: |
+          set -euo pipefail
+          export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+
+          cat > /tmp/${TENANT}-policy.hcl <<EOF
+path "secret/data/${TENANT}/minio-creds" { capabilities = ["read"] }
+path "secret/data/${TENANT}/app-creds"   { capabilities = ["read"] }
+path "database/creds/${TENANT}-app-role" { capabilities = ["read"] }
+path "secret/metadata/${TENANT}/*"       { capabilities = ["list"] }
+path "auth/${VAULT_K8S_MOUNT}/role/${TENANT}-app-role" { capabilities = ["read"] }
+path "${VAULT_SHARED_GHCR_PATH}" { capabilities = ["read"] }
+EOF
+
+          vault policy write ${TENANT}-policy /tmp/${TENANT}-policy.hcl
+
+          vault write auth/${VAULT_K8S_MOUNT}/role/${TENANT}-app-role \
+            bound_service_account_names=${TENANT}-sa \
+            bound_service_account_namespaces=${TENANT} \
+            policies=${TENANT}-policy \
+            audience="https://kubernetes.default.svc.cluster.local" \
+            ttl=24h
+
+          if [ -n "${DOCKERCONFIGJSON_B64:-}" ]; then
+            vault kv put ${VAULT_SHARED_GHCR_PATH} dockerconfigjson="${DOCKERCONFIGJSON_B64}"
+          fi
+
 
       - name: Write override values from secret (optional)
         if: env.HELM_VALUES_B64 != ''
