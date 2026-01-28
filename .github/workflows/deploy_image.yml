@@ -22,6 +22,12 @@ on:
   repository_dispatch:
     types:
       - image-published
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy_image.yml"
+      - "erpnext/**"
+      - "values.*.yaml"
 
 env:
   CHART_PATH: erpnext
