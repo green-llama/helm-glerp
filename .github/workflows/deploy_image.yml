@@ -102,11 +102,10 @@ jobs:
           VAULT_VERSION=1.15.6
           curl -fsSL https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip -o /tmp/vault.zip
           unzip -o /tmp/vault.zip -d /tmp
-          install -m 0755 /tmp/vault /usr/local/bin/vault || {
-            mkdir -p "$HOME/bin"
-            mv /tmp/vault "$HOME/bin/vault"
-            echo "$HOME/bin" >> "$GITHUB_PATH"
-          }
+          mkdir -p "$HOME/bin"
+          mv /tmp/vault "$HOME/bin/vault"
+          chmod 0755 "$HOME/bin/vault"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
 
       - name: Bootstrap Vault policy/role and GHCR creds
         if: env.VAULT_ADDR != '' && env.VAULT_ROLE_ID != '' && env.VAULT_SECRET_ID != ''
