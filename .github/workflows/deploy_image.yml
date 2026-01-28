@@ -130,7 +130,7 @@ jobs:
           path "secret/metadata/${TENANT}/*"       { capabilities = ["list"] }
           path "auth/${VAULT_K8S_MOUNT}/role/${TENANT}-app-role" { capabilities = ["read"] }
           path "${VAULT_SHARED_GHCR_PATH}" { capabilities = ["read"] }
-EOF
+          EOF
 
           vault policy write ${TENANT}-policy /tmp/${TENANT}-policy.hcl
 
