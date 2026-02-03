@@ -69,4 +69,9 @@ To let the workflow pull GHCR images via Vault/External Secrets, also add:
   base64 -w0 /tmp/config.json
   ```
 
-Add `KUBECONFIG_B64` (base64 of your kubeconfig) and rerun the `deploy_image` workflow; it will log into Vault via AppRole and create the per-tenant policy/role automatically.
+- `KUBECONFIG_B64` – base64 of the kubeconfig the runner should use:
+  ```bash
+  base64 -w0 ~/.kube/config
+  ```
+
+With these secrets set, rerun the `deploy_image` workflow; it will log into Vault via AppRole, create the per-tenant policy/role, and pull GHCR images via External Secrets.
