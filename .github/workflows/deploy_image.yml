@@ -145,6 +145,28 @@ jobs:
           fi
 
 
+      - name: Seed MinIO creds in Vault (optional)
+        if: env.VAULT_ADDR != '' && env.VAULT_ROLE_ID != '' && env.VAULT_SECRET_ID != ''
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_SECRET_ID }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          TENANT: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+        run: |
+          set -euo pipefail
+          export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+
+          AK="${MINIO_ACCESS_KEY:-}"
+          SK="${MINIO_SECRET_KEY:-}"
+          if [ -z "$AK" ]; then AK=$(openssl rand -base64 12); fi
+          if [ -z "$SK" ]; then SK=$(openssl rand -base64 24); fi
+
+          vault kv put secret/${TENANT}/minio-creds accesskey="$AK" secretkey="$SK"
+
+
       - name: Write override values from secret (optional)
         if: env.HELM_VALUES_B64 != ''
         run: |
