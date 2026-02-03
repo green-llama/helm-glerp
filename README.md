@@ -75,3 +75,15 @@ To let the workflow pull GHCR images via Vault/External Secrets, also add:
   ```
 
 With these secrets set, rerun the `deploy_image` workflow; it will log into Vault via AppRole, create the per-tenant policy/role, and pull GHCR images via External Secrets.
+
+### Store the shared GHCR creds in Vault (once)
+If you prefer to preload the shared docker config in Vault (instead of letting the workflow write it), run:
+```bash
+export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_TOKEN=<token with write on the path>
+VAULT_SHARED_GHCR_PATH=${VAULT_SHARED_GHCR_PATH:-secret/data/shared/ghcr-creds}
+
+# create the same config.json as above, then:
+vault kv put "$VAULT_SHARED_GHCR_PATH" dockerconfigjson="$(base64 -w0 /tmp/config.json)"
+```
+All tenants can then reference the shared path (default matches the workflow). Change the path if you set `VAULT_SHARED_GHCR_PATH` differently.
