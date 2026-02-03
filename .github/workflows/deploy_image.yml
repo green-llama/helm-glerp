@@ -120,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
-            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python3 -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
 
           cat > /tmp/${TENANT}-policy.hcl <<EOF
           path "secret/data/${TENANT}/minio-creds" { capabilities = ["read"] }
@@ -157,7 +157,7 @@ jobs:
         run: |
           set -euo pipefail
           export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
-            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python3 -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
 
           AK="${MINIO_ACCESS_KEY:-}"
           SK="${MINIO_SECRET_KEY:-}"
