@@ -69,6 +69,7 @@ jobs:
       - eps
       - offsite_backups
       - posawesome
+      - glerp_ai_intake
 
 dragonfly-cache:
   enabled: true
