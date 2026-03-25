@@ -1,4 +1,20 @@
-# Values for tenant "ciclo" using Longhorn + MinIO architecture
+# Default values for erpnext.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Configure external database host
+#dbHost: mariadb
+#dbPort: 3306
+#dbRootUser: root
+#dbRootPassword: 'erpnextrootpass'
+# dbRds: false
+# dbExistingSecret: ""
+# dbExistingSecretPasswordKey: "password"
+
+# Configure external redis host
+externalRedis:
+  cache: ""
+  queue: ""
 
 image:
   repository: ghcr.io/green-llama/glerp-image
@@ -7,291 +23,557 @@ image:
 
 imagePullSecrets:
   - name: ghcr-cred
-
-serviceAccount:
-  create: true
-  name: "ciclo-sa"
-
-rbac:
-  secretReader:
-    enabled: true
-
+  
 nginx:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 75
+    targetMemory: 75
+  # config: |
+  #   # custom conf /etc/nginx/conf.d/default.conf
   environment:
+    upstreamRealIPAddress: null
+    upstreamRealIPRecursive: null
+    upstreamRealIPHeader: null
+    frappeSiteNameHeader: null
+    proxyReadTimeout: null
+    clientMaxBodySize: null
     UPSTREAM_REAL_IP_ADDRESS: "127.0.0.1"
     UPSTREAM_REAL_IP_RECURSIVE: "off"
     UPSTREAM_REAL_IP_HEADER: "X-Forwarded-For"
     FRAPPE_SITE_NAME_HEADER: "$host"
     PROXY_READ_TIMEOUT: "120"
     CLIENT_MAX_BODY_SIZE: "500m"
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Custom topologySpreadConstraints (uncomment and modify to override defaults)
+  # topologySpreadConstraints:
+  #   - maxSkew: 2
+  #     topologyKey: failure-domain.beta.kubernetes.io/zone
+  #     whenUnsatisfiable: ScheduleAnyway
+
+  # Default topologySpreadConstraints (used if topologySpreadConstraints is not set)
+  defaultTopologySpread:
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+  envVars: []
+  initContainers: []
+  sidecars: []
+
+worker:
+  gunicorn:
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 75
+      targetMemory: 75
+    livenessProbe:
+      tcpSocket:
+        port: 8000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      tcpSocket:
+        port: 8000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    service:
+      type: ClusterIP
+      port: 8000
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    args: []
+    envVars: []
+    initContainers: []
+    sidecars: []
+
+  default:
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 75
+      targetMemory: 75
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    livenessProbe:
+      override: false
+      probe: {}
+    readinessProbe:
+      override: false
+      probe: {}
+    envVars: []
+    initContainers: []
+    sidecars: []
+
+  short:
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 75
+      targetMemory: 75
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    livenessProbe:
+      override: false
+      probe: {}
+    readinessProbe:
+      override: false
+      probe: {}
+    envVars: []
+    initContainers: []
+    sidecars: []
+
+  long:
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPU: 75
+      targetMemory: 75
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    livenessProbe:
+      override: false
+      probe: {}
+    readinessProbe:
+      override: false
+      probe: {}
+    envVars: []
+    initContainers: []
+    sidecars: []
+
+  scheduler:
+    replicaCount: 1
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    livenessProbe:
+      override: false
+      probe: {}
+    readinessProbe:
+      override: false
+      probe: {}
+    envVars: []
+    initContainers: []
+    sidecars: []
+
+
+  # Custom topologySpreadConstraints (uncomment and modify to override defaults)
+  # topologySpreadConstraints:
+  #   - maxSkew: 2
+  #     topologyKey: failure-domain.beta.kubernetes.io/zone
+  #     whenUnsatisfiable: ScheduleAnyway
+
+  # Default topologySpreadConstraints (used if topologySpreadConstraints is not set)
+  defaultTopologySpread:
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+
+
+  healthProbe: |
+    exec:
+      command:
+        - bash
+        - -c
+        - |-
+          echo "Pinging backing services";
+          {{- if (index .Values "mariadb-sts").enabled }}
+          wait-for-it {{ include "erpnext.fullname" . }}-mariadb-sts:3306 -t 1;
+          {{- else if (index .Values "postgresql-sts").enabled }}
+          wait-for-it {{ include "erpnext.fullname" . }}-postgresql-sts:5432 -t 1;
+          {{- else if or .Values.mariadb.enabled (get .Values "mariadb-subchart").enabled }}
+          (
+            wait-for-it {{ .Release.Name }}-mariadb-subchart:3306 -t 0 || \
+            wait-for-it {{ .Release.Name }}-mariadb:3306 -t 0 || \
+            wait-for-it {{ .Release.Name }}-mariadb-subchart-primary:3306 -t 0 || \
+            wait-for-it {{ .Release.Name }}-mariadb-primary:3306 -t 1
+          )
+          {{- else if or .Values.postgresql.enabled (get .Values "postgresql-subchart").enabled }}
+          (
+            wait-for-it {{ .Release.Name }}-postgresql-subchart:5432 -t 0 || \
+            wait-for-it {{ .Release.Name }}-postgresql:5432 -t 1
+          )
+          {{- else if or .Values.postgresql.enabled (index .Values "postgresql-subchart").enabled }}
+          wait-for-it {{ .Release.Name }}-postgresql-subchart:5432 -t 1;
+          {{- else if .Values.dbHost }}
+          wait-for-it {{ .Values.dbHost }}:{{ .Values.dbPort }} -t 1;
+          {{- end }}
+          {{- if .Values.externalRedis.cache }}
+          wait-for-it $(echo {{ .Values.externalRedis.cache }} | sed 's,redis://,,') -t 1;
+          {{- else if (index .Values "dragonfly-cache").enabled }}
+          wait-for-it {{ .Release.Name }}-dragonfly-cache:6379 -t 1;
+          {{- else if (index .Values "redis-cache").enabled }}
+          wait-for-it {{ .Release.Name }}-redis-cache-master:6379 -t 1;
+          {{- end }}
+          {{- if .Values.externalRedis.queue }}
+          wait-for-it $(echo {{ .Values.externalRedis.queue }} | sed 's,redis://,,') -t 1;
+          {{- else if (index .Values "dragonfly-queue").enabled }}
+          wait-for-it {{ .Release.Name }}-dragonfly-queue:6379 -t 1;
+          {{- else if (index .Values "redis-queue").enabled }}
+          wait-for-it {{ .Release.Name }}-redis-queue-master:6379 -t 1;
+          {{- end }}
+    initialDelaySeconds: 15
+    periodSeconds: 5
+    timeoutSeconds: 5
+
+socketio:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 75
+    targetMemory: 75
+  livenessProbe:
+    tcpSocket:
+      port: 9000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    tcpSocket:
+      port: 9000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    port: 9000
+  envVars: []
+  initContainers: []
+  sidecars: []
 
 persistence:
   worker:
     enabled: true
+    # existingClaim: ""
     size: 5Gi
     storageClass: longhorn-crypto-rwm
     accessModes:
-      - ReadWriteMany
+    - ReadWriteMany
+
   logs:
+    # Container based log search and analytics stack recommended
     enabled: false
+    # existingClaim: ""
+    size: 8Gi
+    # storageClass: "nfs"
+    accessModes:
+    - ReadWriteMany
+
+# Ingress
+ingress:
+  # ingressName: ""
+  # className: ""
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+  - host: erp.cluster.local
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: auth-server-tls
+  #    hosts:
+  #      - auth-server.local
+
+httproute:
+  enabled: false
+  name: ""
+  annotations: {}
+  parentRefs:
+  - gatewayName: "public-gateway"
+    gatewayNamespace: "networking"
+      # gatewayKind: "Gateway"
+    gatewaySectionName: "http"
+  hostnames:
+  - "erp.example.com"
+  rules:
+  - matches:
+    - pathType: "PathPrefix"
+      path: "/"
+
+jobs:
+  volumePermissions:
+    # jobName: ""
+    enabled: false
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  configure:
+    # jobName: ""
+    enabled: true
+    fixVolume: true
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    envVars: []
+    command: []
+    args: []
+
+  createSite:
+    # jobName: ""
+    enabled: true
+    forceCreate: false
+    siteName: "erp.cluster.local"
+    adminPassword: "changeit"
+    adminExistingSecret: ""
+    adminExistingSecretKey: "password"
+    installApps:
+    - "erpnext"
+    - "payments"
+    - "webshop"
+    - "glerp_frappe_theme"
+    - "erpnext_email_parser"
+    - "glerp_branding"
+    - "hrms"
+    - "dfp_external_storage"
+    - "glerp_webtools"
+    - "glerp_bigbulk_import"
+    - "glerp_braintree_webhooks"
+    - "glerp_audience"
+    - "newsletter"
+    - "blog"
+    - "eps"
+    - "offsite_backups"
+    - "posawesome"
+    dbType: "mariadb"
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  dropSite:
+    # jobName: ""
+    enabled: false
+    forced: false
+    siteName: "erp.cluster.local"
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  backup:
+    # jobName: ""
+    enabled: false
+    siteName: "erp.cluster.local"
+    withFiles: true
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  migrate:
+    # jobName: ""
+    enabled: false
+    siteName: "erp.cluster.local"
+    skipFailing: false
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  custom:
+    enabled: false
+    jobName: ""
+    labels: {}
+    backoffLimit: 0
+    initContainers: []
+    containers: []
+    restartPolicy: Never
+    volumes: []
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Default name aligns with namespace to simplify Vault/ESO bindings; override to reuse an existing SA.
+  name: ""
+
+rbac:
+  secretReader:
+    enabled: true
+    name: ""
+    bindingName: ""
+
+podSecurityContext:
+  supplementalGroups: [1000]
+
+securityContext:
+  capabilities:
+    add:
+    - CAP_CHOWN
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
 mariadb-sts:
   enabled: true
-  rootPassword: changeit
+  image:
+    repository: mariadb
+    tag: "10.6"
+    pullPolicy: IfNotPresent
+  rootPassword: "changeit"
   persistence:
     storageClass: longhorn-crypto-mariadb-rwo
     size: 8Gi
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  myCnf: |
+    [mysqld]
+    # Character Set - Required for GLerp compatibility
+    skip-character-set-client-handshake
+    skip-innodb-read-only-compressed
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
 
-ingress:
+    # Memory Architecture: Focused on RAM-Residency
+    # 2GB allows 160k+ items & 1 year of GL entries to live in memory
+    innodb_buffer_pool_size = 2G
+    innodb_buffer_pool_instances = 2
+
+    # Transaction Log: High-volume write optimization
+    innodb_log_file_size = 512M
+    innodb_flush_log_at_trx_commit = 2
+
+    # Connection Management: Prevents "Connection Exhaustion" errors
+    max_connections = 100
+    tmp_table_size = 64M
+    max_heap_table_size = 64M
+
+mariadb-subchart:
+  # To enable the classic Bitnami MariaDB subchart, set enabled to true
+  # and set mariadb-sts.enabled to false.
+  enabled: false
+  image:
+    repository: bitnamilegacy/mariadb
+    tag: "10.6.17-debian-11-r10"
+  # Values passed to the bitnami/mariadb subchart can be defined here.
+
+# alias for mariadb-subchart.enabled for backward compatibility
+mariadb:
   enabled: false
 
-jobs:
-  createSite:
-    enabled: true
-    siteName: "ciclo.greenllama.tech"
-    adminPassword: changeit
-    dbType: mariadb
-    installApps:
-      - erpnext
-      - payments
-      - webshop
-      - glerp_frappe_theme
-      - erpnext_email_parser
-      - glerp_branding
-      - hrms
-      - dfp_external_storage
-      - glerp_webtools
-      - glerp_bigbulk_import
-      - glerp_braintree_webhooks
-      - glerp_audience
-      - newsletter
-      - blog
-      - eps
-      - offsite_backups
-      - posawesome
-      - glerp_ai_intake
-
 dragonfly-cache:
+  # Using DragonflyDB: https://www.dragonflydb.io/
+  # https://github.com/dragonflydb/dragonfly/tree/main/helm/dragonfly
   enabled: true
+  # host: ""
+  # No persistence for cache
 
 dragonfly-queue:
+  # Using DragonflyDB: https://www.dragonflydb.io/
+  # https://github.com/dragonflydb/dragonfly/tree/main/helm/dragonfly
   enabled: true
+  # host: ""
+  # Persistence can be enabled for queue
   storage:
     enabled: false
+    # The size of the PersistentVolumeClaim.
+    size: 8Gi
+    # The name of the StorageClass to use. If not specified, the default StorageClass will be used.
+    # storageClassName: "nfs"
 
-extraObjects:
-  - apiVersion: external-secrets.io/v1
-    kind: ExternalSecret
-    metadata:
-      name: apps-ca-trust
-      namespace: ciclo
-      finalizers:
-        - externalsecrets.external-secrets.io/externalsecret-cleanup
-    spec:
-      refreshInterval: 1h0m0s
-      secretStoreRef:
-        kind: ClusterSecretStore
-        name: kubernetes-token-auth
-      target:
-        name: apps-ca-trust
-        creationPolicy: Owner
-        deletionPolicy: Retain
-        template:
-          type: Opaque
-          engineVersion: v2
-          data:
-            ca.crt: |
-              {{ .root_ca }}
-              {{ .intermediate_ca }}
-            intermediate.crt: |
-              {{ .intermediate_ca }}
-            root.crt: |
-              {{ .root_ca }}
-      data:
-        - secretKey: root_ca
-          remoteRef:
-            key: root-ca-secret
-            property: tls.crt
-        - secretKey: intermediate_ca
-          remoteRef:
-            key: apps-int-ca-secret
-            property: tls.crt
+postgresql:
+  enabled: false # alias for postgresql-subchart.enabled
 
-  - apiVersion: cert-manager.io/v1
-    kind: Certificate
-    metadata:
-      name: ciclo-leaf-cert
-      namespace: ciclo
-    spec:
-      dnsNames:
-        - "*.ciclo.svc"
-        - "*.ciclo.svc.cluster.local"
-        - "*.greenllama.tech"
-      duration: 2160h
-      renewBefore: 360h
-      ipAddresses:
-        - 127.0.0.1
-        - "::1"
-      issuerRef:
-        group: cert-manager.io
-        kind: ClusterIssuer
-        name: apps-general-signer
-      secretName: ciclo-leaf-cert
+postgresql-subchart:
+  # To enable the classic Bitnami PostgreSQL subchart, set enabled to true
+  # and set postgresql.enabled to false.
+  enabled: false
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: "14"
+  # Values passed to the bitnami/postgresql subchart can be defined here.
 
-  - apiVersion: external-secrets.io/v1
-    kind: ExternalSecret
-    metadata:
-      name: ciclo-minio-creds
-      namespace: ciclo
-    spec:
-      refreshInterval: 1h
-      secretStoreRef:
-        kind: ClusterSecretStore
-        name: vault-backend
-      target:
-        name: ciclo-minio-creds
-        creationPolicy: Owner
-        template:
-          engineVersion: v2
-          data:
-            accesskey: "{{ .accesskey }}"
-            secretkey: "{{ .secretkey }}"
-            config.env: |
-              export MINIO_ROOT_USER="{{ .accesskey }}"
-              export MINIO_ROOT_PASSWORD="{{ .secretkey }}"
-      data:
-        - secretKey: accesskey
-          remoteRef:
-            key: secret/data/ciclo/minio-creds
-            property: accesskey
-        - secretKey: secretkey
-          remoteRef:
-            key: secret/data/ciclo/minio-creds
-            property: secretkey
+postgresql-sts:
+  enabled: false
+  image:
+    repository: postgres
+    tag: "15"
+    pullPolicy: IfNotPresent
+  postgresUser: "postgres"
+  postgresPassword: "changeit"
+  persistence:
+    # storageClass: "nfs"
+    size: 8Gi
+  resources: {}
 
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      name: ciclo
-      namespace: traefik-system
-      annotations:
-        kubernetes.io/ingress.class: traefik
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`ciclo.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: glerp
-              namespace: ciclo
-              port: 8080
-              scheme: http
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
+redis-cache:
+  # To enable the classic Bitnami Redis subchart for cache, set enabled to true
+  # and set dragonfly-cache.enabled to false.
+  enabled: false
+  image:
+    repository: bitnamilegacy/redis
+    tag: "7.0"
+  # Values passed to the bitnami/redis subchart can be defined here.
 
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      name: minio-ciclo
-      namespace: ciclo
-      annotations:
-        kubernetes.io/ingress.class: traefik
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`minio-ciclo.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: minio
-              port: 80
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
-
-  - apiVersion: minio.min.io/v2
-    kind: Tenant
-    metadata:
-      name: ciclo-minio-tenant
-      namespace: ciclo
-    spec:
-      mountPath: /export
-      configuration:
-        name: ciclo-minio-creds
-      env:
-        - name: MINIO_SERVER_URL
-          value: https://minio-ciclo.greenllama.tech
-        - name: MINIO_BROWSER_REDIRECT_URL
-          value: https://minio-ciclo.greenllama.tech
-        - name: MINIO_KMS_VAULT_ENABLE
-          value: "on"
-        - name: MINIO_KMS_VAULT_ENDPOINT
-          value: http://vault-active.vault-system.svc.cluster.local:8200
-        - name: MINIO_KMS_VAULT_AUTH_TYPE
-          value: jwt
-        - name: MINIO_KMS_VAULT_ROLE
-          value: ciclo-role
-        - name: MINIO_KMS_VAULT_KEY_NAME
-          value: minio-key
-        - name: MINIO_KMS_VAULT_JWT_PATH
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
-      buckets:
-        - name: ciclo
-          region: us-east-1
-          objectLock: false
-      pools:
-        - name: pool-0
-          servers: 2
-          volumesPerServer: 2
-          volumeClaimTemplate:
-            metadata:
-              name: data
-            spec:
-              accessModes:
-                - ReadWriteOnce
-              storageClassName: directpv-min-io
-              resources:
-                requests:
-                  storage: 512Mi
-          containerSecurityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-          securityContext:
-            fsGroup: 1000
-        - name: pool-1
-          servers: 2
-          volumesPerServer: 2
-          volumeClaimTemplate:
-            metadata:
-              name: data
-            spec:
-              accessModes:
-                - ReadWriteOnce
-              storageClassName: directpv-min-io
-              resources:
-                requests:
-                  storage: 512Mi
-          containerSecurityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-          securityContext:
-            fsGroup: 1000
-      poolsMetadata:
-        annotations:
-          sidecar.istio.io/inject: "true"
-          traffic.sidecar.istio.io/includeInboundPorts: "10443"
-          traffic.sidecar.istio.io/includeOutboundPorts: "8200"
-          traffic.sidecar.istio.io/excludeInboundPorts: "9000, 9090"
-          traffic.sidecar.istio.io/excludeOutboundPorts: "9000, 9090"
-      requestAutoCert: false
-      prometheusOperator: false
-      features:
-        bucketDNS: false
-        enableSFTP: false
-      podManagementPolicy: Parallel
-      subPath: /data
-      serviceAccountName: ciclo-sa
+redis-queue:
+  # To enable the classic Bitnami Redis subchart for queue, set enabled to true
+  # and set dragonfly-queue.enabled to false.
+  enabled: false
+  image:
+    repository: bitnamilegacy/redis
+    tag: "7.0"
+  # Values passed to the bitnami/redis subchart can be defined here.
+extraObjects: []
