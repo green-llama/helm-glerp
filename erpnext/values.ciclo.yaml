@@ -79,6 +79,16 @@ dragonfly-queue:
   storage:
     enabled: false
 
+# Ensure Bitnami redis/postgresql subcharts stay disabled (we use dragonfly + mariadb-sts)
+redis-cache:
+  enabled: false
+
+redis-queue:
+  enabled: false
+
+postgresql-subchart:
+  enabled: false
+
 extraObjects:
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
