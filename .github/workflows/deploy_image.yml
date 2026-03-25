@@ -1,0 +1,200 @@
+name: Deploy GLerp Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: Helm release name
+        required: true
+        default: glerp
+      namespace:
+        description: Target namespace
+        required: true
+        default: glerp
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        default: dev
+      values_file:
+        description: Path to values file to use (repo-relative)
+        required: true
+        default: erpnext/values.new-tenant.example.yaml
+  repository_dispatch:
+    types:
+      - image-published
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy_image.yml"
+      - "erpnext/**"
+      - "values.*.yaml"
+
+env:
+  CHART_PATH: erpnext
+  IMAGE_REPOSITORY: ghcr.io/green-llama/glerp-image
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, helm-glerp]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        run: |
+          set -euo pipefail
+          if [ -z "${KUBECONFIG_B64}" ]; then
+            echo "KUBECONFIG_B64 is empty. Set this secret to a base64-encoded kubeconfig." >&2
+            exit 1
+          fi
+          mkdir -p "${HOME}/.kube"
+          echo "${KUBECONFIG_B64}" | base64 -d > "${HOME}/.kube/config"
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+
+      - name: Set current context
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          set -euo pipefail
+          ctx=$(kubectl config get-contexts -o name | head -n1)
+          if [ -z "$ctx" ]; then
+            echo "No contexts found in kubeconfig" >&2
+            exit 1
+          fi
+          kubectl config use-context "$ctx"
+
+      - name: Show kubeconfig contexts
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          kubectl config get-contexts || true
+
+      - name: Show kubeconfig server
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          kubectl config view --raw --minify | grep server || true
+
+      - name: Install External Secrets Operator (with CRDs)
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo update
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets --create-namespace \
+            --set installCRDs=true --wait --timeout 180s
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s
+          kubectl api-resources --api-group=external-secrets.io
+
+      - name: Install Vault CLI
+        run: |
+          set -euo pipefail
+          VAULT_VERSION=1.15.6
+          curl -fsSL https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip -o /tmp/vault.zip
+          unzip -o /tmp/vault.zip -d /tmp
+          mkdir -p "$HOME/bin"
+          mv /tmp/vault "$HOME/bin/vault"
+          chmod 0755 "$HOME/bin/vault"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Bootstrap Vault policy/role and GHCR creds
+        if: env.VAULT_ADDR != '' && env.VAULT_ROLE_ID != '' && env.VAULT_SECRET_ID != ''
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_SECRET_ID }}
+          VAULT_K8S_MOUNT: ${{ secrets.VAULT_K8S_MOUNT || 'kubernetes' }}
+          VAULT_SHARED_GHCR_PATH: ${{ secrets.VAULT_SHARED_GHCR_PATH || 'secret/data/shared/ghcr-creds' }}
+          DOCKERCONFIGJSON_B64: ${{ secrets.DOCKERCONFIGJSON_B64 }}
+          TENANT: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+        run: |
+          set -euo pipefail
+          export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python3 -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+
+          cat > /tmp/${TENANT}-policy.hcl <<EOF
+          path "secret/data/${TENANT}/minio-creds" { capabilities = ["read"] }
+          path "secret/data/${TENANT}/app-creds"   { capabilities = ["read"] }
+          path "database/creds/${TENANT}-app-role" { capabilities = ["read"] }
+          path "secret/metadata/${TENANT}/*"       { capabilities = ["list"] }
+          path "auth/${VAULT_K8S_MOUNT}/role/${TENANT}-app-role" { capabilities = ["read"] }
+          path "${VAULT_SHARED_GHCR_PATH}" { capabilities = ["read"] }
+          EOF
+
+          vault policy write ${TENANT}-policy /tmp/${TENANT}-policy.hcl
+
+          vault write auth/${VAULT_K8S_MOUNT}/role/${TENANT}-app-role \
+            bound_service_account_names=${TENANT}-sa \
+            bound_service_account_namespaces=${TENANT} \
+            policies=${TENANT}-policy \
+            audience="https://kubernetes.default.svc.cluster.local" \
+            ttl=24h
+
+          if [ -n "${DOCKERCONFIGJSON_B64:-}" ]; then
+            vault kv put ${VAULT_SHARED_GHCR_PATH} dockerconfigjson="${DOCKERCONFIGJSON_B64}"
+          fi
+
+
+      - name: Seed MinIO creds in Vault (optional)
+        if: env.VAULT_ADDR != '' && env.VAULT_ROLE_ID != '' && env.VAULT_SECRET_ID != ''
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_SECRET_ID }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          TENANT: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+        run: |
+          set -euo pipefail
+          export VAULT_TOKEN=$(vault write -format=json auth/approle/login \
+            role_id="$VAULT_ROLE_ID" secret_id="$VAULT_SECRET_ID" | python3 -c 'import sys,json; print(json.load(sys.stdin)["auth"]["client_token"])')
+
+          AK="${MINIO_ACCESS_KEY:-}"
+          SK="${MINIO_SECRET_KEY:-}"
+          if [ -z "$AK" ]; then AK=$(openssl rand -base64 12); fi
+          if [ -z "$SK" ]; then SK=$(openssl rand -base64 24); fi
+
+          vault kv put secret/${TENANT}/minio-creds accesskey="$AK" secretkey="$SK"
+
+
+      - name: Write override values from secret (optional)
+        if: env.HELM_VALUES_B64 != ''
+        run: |
+          echo "${HELM_VALUES_B64}" | base64 -d > override-values.yaml
+        env:
+          HELM_VALUES_B64: ${{ secrets.HELM_VALUES_B64 }}
+
+      - name: Deploy chart
+        env:
+          RELEASE_NAME: ${{ inputs.release_name || github.event.client_payload.release_name || 'glerp' }}
+          NAMESPACE: ${{ inputs.namespace || github.event.client_payload.namespace || 'glerp' }}
+          IMAGE_TAG: ${{ inputs.image_tag || github.event.client_payload.image_tag || 'dev' }}
+          INPUT_VALUES_FILE: ${{ inputs.values_file || github.event.client_payload.values_file || 'erpnext/values.new-tenant.example.yaml' }}
+          KUBECONFIG: /home/runner/.kube/config
+        run: |
+          set -euo pipefail
+
+          VALUES_ARGS=""
+          if [ -f "${INPUT_VALUES_FILE}" ]; then
+            VALUES_ARGS="-f ${INPUT_VALUES_FILE}"
+          fi
+          if [ -f override-values.yaml ]; then
+            VALUES_ARGS="${VALUES_ARGS} -f override-values.yaml"
+          fi
+
+          helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
+            --namespace "${NAMESPACE}" \
+            --create-namespace \
+            --set image.repository="${IMAGE_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            ${VALUES_ARGS}

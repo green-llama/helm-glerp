@@ -17,79 +17,73 @@ Helm Chart to deploy a *frappe-bench*-like environment on Kubernetes.
 6. Copy the content of .helm-repo to the helm-glerp:  cp .helm-repo/* .
 7. Sync changes to the gh-pages branch that is used to serve as a webpage and allows to download the helmchart
 
-### Resources Included :
+## Vault setup for GitHub Actions (AppRole)
 
-ConfigMaps:
+Run these once in a Vault shell (inside the Vault pod is fine). If you only have the admin password, first log in with userpass to get a token:
 
-- `nginx-config` is used to override default.conf for nginx reverse proxy and static assets container.
+```bash
+export VAULT_ADDR=http://127.0.0.1:8200   # or your URL
+vault login -method=userpass username=admin password='<ADMIN_PASSWORD>'
+export VAULT_TOKEN=<token_from_login>
+```
 
-Deployments:
+Then create the AppRole:
 
-- `gunicorn` deployment contains frappe/erpnext gunicorn.
-- `nginx` deployment contains frappe/erpnext static assets and nginx reverse proxy.
-- `scheduler` deployment contains frappe/erpnext scheduler.
-- `socketio` deployment contains frappe/erpnext socketio.
-- `worker-d` deployment contains frappe/erpnext default worker.
-- `worker-l` deployment contains frappe/erpnext long worker.
-- `worker-s` deployment contains frappe/erpnext short worker.
+```bash
+vault auth enable approle 2>/dev/null || true
 
-HorizontalPodAutoscalers:
+ROLE=glerp-github-runner
+POLICY=glerp-policy   # adjust to the policy you want attached
 
-- `gunicorn` hpa scales frappe/erpnext gunicorn deployment.
-- `nginx` hpa scales frappe/erpnext nginx deployment.
-- `socketio` hpa scales frappe/erpnext socketio deployment.
-- `worker-d` hpa scales frappe/erpnext default worker deployment.
-- `worker-l` hpa scales frappe/erpnext long worker deployment.
-- `worker-s` hpa scales frappe/erpnext short worker deployment.
+vault write auth/approle/role/$ROLE \
+  policies=$POLICY \
+  token_ttl=24h \
+  token_max_ttl=72h
 
-Ingresses:
+# Get IDs for GitHub secrets
+vault read  -field=role_id  auth/approle/role/$ROLE/role-id
+vault write -force -field=secret_id auth/approle/role/$ROLE/secret-id
+```
 
-- `ingress` with custom name can be dynamically generated using `helm template` and configured values.
+Take the outputs and create GitHub Actions secrets:
+- `VAULT_ROLE_ID` – value from `role_id`
+- `VAULT_SECRET_ID` – value from `secret_id`
+- `VAULT_ADDR` – your Vault URL (e.g., `https://vault.example.com:8200`)
+- `VAULT_K8S_MOUNT` (optional) – defaults to `kubernetes`
+- `VAULT_SHARED_GHCR_PATH` (optional) – defaults to `secret/data/shared/ghcr-creds`
 
-HTTPRoutes:
-- Gateway API's `httproute` with custom name can be dynamically generated using `helm template` and configured values.
+To let the workflow pull GHCR images via Vault/External Secrets, also add:
+- `DOCKERCONFIGJSON_B64` – base64 of a `config.json` containing your GHCR credentials:
+  ```bash
+  cat > /tmp/config.json <<'EOF'
+  {
+    "auths": {
+      "ghcr.io": {
+        "username": "YOUR_GHCR_USERNAME",
+        "password": "YOUR_GHCR_PAT",
+        "auth": "$(echo -n YOUR_GHCR_USERNAME:YOUR_GHCR_PAT | base64 -w0)"
+      }
+    }
+  }
+  EOF
+  base64 -w0 /tmp/config.json
+  ```
 
-Jobs:
+- `KUBECONFIG_B64` – base64 of the kubeconfig the runner should use:
+  ```bash
+  base64 -w0 ~/.kube/config
+  ```
 
-- `vol-fix` job to fix volume permissions, changes the `uid` and `gid` to `1000:1000`.
-- `bench-conf` job to configure db host, redis hosts and socketio port.
-- `create-site` job to create new site.
-- `drop-site` job to drop existing site.
-- `backup-push` job to backup and optionally push backup to S3 for existing site.
-- `migrate` job to migrate existing site.
-- `custom` job to run custom additional commands and configuration.
+With these secrets set, rerun the `deploy_image` workflow; it will log into Vault via AppRole, create the per-tenant policy/role, and pull GHCR images via External Secrets.
 
-PVC:
+### Store the shared GHCR creds in Vault (once)
+If you prefer to preload the shared docker config in Vault (instead of letting the workflow write it), run:
+```bash
+export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_TOKEN=<token with write on the path>
+VAULT_SHARED_GHCR_PATH=${VAULT_SHARED_GHCR_PATH:-secret/data/shared/ghcr-creds}
 
-- `glerp` persistent volume claim is used to allocate volume for sites and config deployed with this release
-- `glerp-logs` persistent volume claim is used to allocate volume for logs
-
-Secrets:
-
-- `secret` is used to store `db-root-password` for external db host
-
-Services:
-
-- `gunicorn` service exposes pods from gunicorn deployment.
-- `nginx` service exposes pods from nginx deployment.
-- `socketio` service exposes pods from socketio deployment.
-
-ServiceAccounts:
-
-- `glerp` service account is used by all deployments.
-
-Extra Objects:
-
-- `extraObjects` parameter exposed to include your customized resource definitions
-
-### Release Wizard
-
-This is a release script for maintainers. It does the following:
-
-- Checks latest tag for given major release for frappe and erpnext using git.
-- Validates that release always bumps up.
-- Bumps values.yaml and Chart.yaml for release changes
-- Adds git tag for chart version
-- Push to selected remote
-
-This will trigger workflow to publish new version of helm chart.
+# create the same config.json as above, then:
+vault kv put "$VAULT_SHARED_GHCR_PATH" dockerconfigjson="$(base64 -w0 /tmp/config.json)"
+```
+All tenants can then reference the shared path (default matches the workflow). Change the path if you set `VAULT_SHARED_GHCR_PATH` differently.

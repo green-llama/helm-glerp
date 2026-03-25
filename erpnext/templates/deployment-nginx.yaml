@@ -31,6 +31,7 @@ spec:
     {{- end }}
       containers:
         - name: nginx
+          {{- $env := .Values.nginx.environment }}
           args:
           {{- if .Values.nginx.config }}
           - nginx
@@ -45,17 +46,17 @@ spec:
             - name: "SOCKETIO"
               value: {{ print (include "erpnext.fullname" .) "-socketio:" .Values.socketio.service.port }}
             - name: "UPSTREAM_REAL_IP_ADDRESS"
-              value: {{ .Values.nginx.environment.upstreamRealIPAddress | quote }}
+              value: {{ coalesce $env.UPSTREAM_REAL_IP_ADDRESS $env.upstreamRealIPAddress | quote }}
             - name: "UPSTREAM_REAL_IP_RECURSIVE"
-              value: {{ .Values.nginx.environment.upstreamRealIPRecursive | quote }}
+              value: {{ coalesce $env.UPSTREAM_REAL_IP_RECURSIVE $env.upstreamRealIPRecursive | quote }}
             - name: "UPSTREAM_REAL_IP_HEADER"
-              value: {{ .Values.nginx.environment.upstreamRealIPHeader }}
+              value: {{ coalesce $env.UPSTREAM_REAL_IP_HEADER $env.upstreamRealIPHeader | quote }}
             - name: "FRAPPE_SITE_NAME_HEADER"
-              value: {{ .Values.nginx.environment.frappeSiteNameHeader }}
+              value: {{ coalesce $env.FRAPPE_SITE_NAME_HEADER $env.frappeSiteNameHeader | quote }}
             - name: "PROXY_READ_TIMEOUT"
-              value: {{ .Values.nginx.environment.proxyReadTimeout | quote }}
+              value: {{ coalesce $env.PROXY_READ_TIMEOUT $env.proxyReadTimeout | quote }}
             - name: "CLIENT_MAX_BODY_SIZE"
-              value: {{ .Values.nginx.environment.clientMaxBodySize }}
+              value: {{ coalesce $env.CLIENT_MAX_BODY_SIZE $env.clientMaxBodySize | quote }}
           {{- if .Values.nginx.envVars }}
             {{- toYaml .Values.nginx.envVars | nindent 12 }}
           {{- end }}

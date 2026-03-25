@@ -42,31 +42,7 @@ mariadb-sts:
     storageClass: longhorn-crypto-mariadb-rwo
     size: 8Gi
 
-<<<<<<< HEAD
-    # Memory Architecture: Focused on RAM-Residency
-    # 2GB allows 160k+ items & 1 year of GL entries to live in memory
-    innodb_buffer_pool_size = 2G
-    innodb_buffer_pool_instances = 2
-
-    # Transaction Log: High-volume write optimization
-    innodb_log_file_size = 512M
-    innodb_flush_log_at_trx_commit = 2
-
-    # Connection Management: Prevents "Connection Exhaustion" errors
-    max_connections = 100
-    tmp_table_size = 64M
-    max_heap_table_size = 64M
-<<<<<<< HEAD
-
-=======
->>>>>>> main
-
-mariadb-subchart:
-  # To enable the classic Bitnami MariaDB subchart, set enabled to true
-  # and set mariadb-sts.enabled to false.
-=======
 ingress:
->>>>>>> main
   enabled: false
 
 jobs:
@@ -103,66 +79,6 @@ dragonfly-queue:
   storage:
     enabled: false
 
-<<<<<<< HEAD
-postgresql:
-  enabled: false # alias for postgresql-subchart.enabled
-
-postgresql-subchart:
-  # To enable the classic Bitnami PostgreSQL subchart, set enabled to true
-  # and set postgresql.enabled to false.
-  enabled: false
-  image:
-    repository: bitnamilegacy/postgresql
-    tag: "14"
-  # Values passed to the bitnami/postgresql subchart can be defined here.
-
-postgresql-sts:
-  enabled: false
-  image:
-    repository: postgres
-    tag: "15"
-    pullPolicy: IfNotPresent
-  postgresUser: "postgres"
-  postgresPassword: "changeit"
-  persistence:
-    # storageClass: "nfs"
-    size: 8Gi
-  resources: {}
-
-redis-cache:
-  # To enable the classic Bitnami Redis subchart for cache, set enabled to true
-  # and set dragonfly-cache.enabled to false.
-  enabled: false
-  image:
-    repository: bitnamilegacy/redis
-    tag: "7.0"
-  # Values passed to the bitnami/redis subchart can be defined here.
-
-redis-queue:
-  # To enable the classic Bitnami Redis subchart for queue, set enabled to true
-  # and set dragonfly-queue.enabled to false.
-  enabled: false
-  image:
-    repository: bitnamilegacy/redis
-    tag: "7.0"
-  # Values passed to the bitnami/redis subchart can be defined here.
-<<<<<<< HEAD
-ingressRoute:
-  enabled: true
-  name: customer-name
-  namespace: traefik-system
-  ingressClass: traefikcd ./
-  entryPoints:
-    - websecure
-  match: "Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)"
-  service:
-    name: glerp
-    namespace: customer-name
-    port: 8080
-    scheme: http
-=======
-=======
->>>>>>> main
 extraObjects:
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
@@ -273,9 +189,6 @@ extraObjects:
               scheme: http
       tls:
         secretName: letsencrypt-greenllama-tech-tls
-<<<<<<< HEAD
->>>>>>> main
-=======
 
   - apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
@@ -382,4 +295,3 @@ extraObjects:
       podManagementPolicy: Parallel
       subPath: /data
       serviceAccountName: ciclo-sa
->>>>>>> main
