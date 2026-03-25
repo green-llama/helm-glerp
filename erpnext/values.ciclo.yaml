@@ -42,6 +42,14 @@ mariadb-sts:
     storageClass: longhorn-crypto-mariadb-rwo
     size: 8Gi
 
+# Keep Bitnami subchart disabled (we use mariadb-sts)
+mariadb-subchart:
+  enabled: false
+
+# Backward-compat alias for mariadb-subchart.enabled
+mariadb:
+  enabled: false
+
 ingress:
   enabled: false
 
