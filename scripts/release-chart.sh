@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-<<<<<<< HEAD
-# End-to-end release helper:
-# - Rebuild .helm-repo from scratch (tarballs + index)
-# - Commit/push chart changes on main
-# - Checkout gh-pages, merge main, copy artifacts to root, commit/push
-#
-# Usage:
-#   ./scripts/release-chart.sh [chart_dir] [repo_dir] [repo_url]
-# Defaults match this repo:
-=======
 # End-to-end release helper for helm-glerp.
 # Steps:
 #   - Rebuild .helm-repo (package chart + index)
@@ -20,19 +10,13 @@ set -euo pipefail
 # Usage:
 #   ./scripts/release-chart.sh [chart_dir] [repo_dir] [repo_url]
 # Defaults:
->>>>>>> main
 #   chart_dir: erpnext
 #   repo_dir:  .helm-repo
 #   repo_url:  https://green-llama.github.io/helm-glerp
 #
 # Notes:
-<<<<<<< HEAD
-# - Expects a clean working tree on main before running.
-# - Leaves you on the branch you started from.
-=======
 #   - Requires clean working tree before starting.
 #   - Leaves you on your original branch.
->>>>>>> main
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
