@@ -13,12 +13,16 @@ set -euo pipefail
 #   FRAPPE_BRANCH  (default: develop)
 #   APPS_JSON      (default: /home/greenllama/frappe_docker_dev/development/apps.json)
 #   HELM_ROOT      (default: /home/greenllama/helm-glerp)
+#   BUILD_CONTEXT  (default: /home/greenllama/frappe_docker_dev)
+#   DOCKERFILE     (default: images/layered/Containerfile, relative to BUILD_CONTEXT)
 
 IMAGE_TAG="${IMAGE_TAG:-ghcr.io/green-llama/glerp-image:dev}"
 FRAPPE_PATH="${FRAPPE_PATH:-https://github.com/green-llama/frappe-gl}"
 FRAPPE_BRANCH="${FRAPPE_BRANCH:-develop}"
 APPS_JSON="${APPS_JSON:-/home/greenllama/frappe_docker_dev/development/apps.json}"
 HELM_ROOT="${HELM_ROOT:-/home/greenllama/helm-glerp}"
+BUILD_CONTEXT="${BUILD_CONTEXT:-/home/greenllama/frappe_docker_dev}"
+DOCKERFILE="${DOCKERFILE:-images/layered/Containerfile}"
 
 build_image() {
   echo "=== Building image ${IMAGE_TAG} ==="
@@ -35,13 +39,15 @@ build_image() {
     echo "Decoded APPS_JSON_BASE64 is empty or invalid; please provide apps.json." >&2
     exit 1
   fi
+  pushd "${BUILD_CONTEXT}" >/dev/null
   docker build --progress=plain \
-    --file images/layered/Containerfile \
+    --file "${DOCKERFILE}" \
     --build-arg FRAPPE_PATH="${FRAPPE_PATH}" \
     --build-arg FRAPPE_BRANCH="${FRAPPE_BRANCH}" \
     --build-arg APPS_JSON_BASE64="${APPS_JSON_BASE64}" \
     --tag "${IMAGE_TAG}" \
     . 2>&1 | tee -a build.log
+  popd >/dev/null
 }
 
 push_image() {
