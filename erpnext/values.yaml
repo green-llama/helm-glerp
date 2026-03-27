@@ -373,6 +373,8 @@ jobs:
     - "payments"
     - "webshop"
     - "glerp_braintree_webhooks"
+    - "glerp_ai_intake" 
+   
     dbType: "mariadb"
     backoffLimit: 0
     resources: {}
@@ -538,24 +540,16 @@ redis-queue:
     repository: bitnamilegacy/redis
     tag: "7.0"
   # Values passed to the bitnami/redis subchart can be defined here.
-extraObjects:
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      annotations:
-        kubernetes.io/ingress.class: traefik
-      name: customer-name
-      namespace: traefik-system
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: glerp
-              namespace: customer-name
-              port: 8080
-              scheme: http
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
+ingressRoute:
+  enabled: true
+  name: customer-name
+  namespace: traefik-system
+  ingressClass: traefikcd ./
+  entryPoints:
+    - websecure
+  match: "Host(`customer-name.greenllama.tech`) && PathPrefix(`/`)"
+  service:
+    name: glerp
+    namespace: customer-name
+    port: 8080
+    scheme: http
