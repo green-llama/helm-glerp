@@ -435,6 +435,14 @@ serviceAccount:
   # Specifies whether a service account should be created
   create: true
 
+# RBAC for reading secrets (used by some tenants); disabled by default
+rbac:
+  secretReader:
+    enabled: false
+    # Optional overrides for the generated Role/RoleBinding names
+    name: ""
+    bindingName: ""
+
 podSecurityContext:
   supplementalGroups: [1000]
 
