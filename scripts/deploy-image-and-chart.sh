@@ -27,6 +27,14 @@ build_image() {
     exit 1
   fi
   APPS_JSON_BASE64=$(base64 -w0 "${APPS_JSON}")
+  if [[ -z "${APPS_JSON_BASE64}" ]]; then
+    echo "APPS_JSON_BASE64 is empty; export a valid apps.json first." >&2
+    exit 1
+  fi
+  if [[ -z "$(echo "${APPS_JSON_BASE64}" | base64 -d 2>/dev/null)" ]]; then
+    echo "Decoded APPS_JSON_BASE64 is empty or invalid; please provide apps.json." >&2
+    exit 1
+  fi
   docker build --progress=plain \
     --file images/layered/Containerfile \
     --build-arg FRAPPE_PATH="${FRAPPE_PATH}" \
@@ -54,4 +62,3 @@ main() {
 }
 
 main "$@"
-
