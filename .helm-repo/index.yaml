@@ -4,9 +4,13 @@ entries:
   - apiVersion: v2
     appVersion: v16.11.0
 <<<<<<< HEAD
+<<<<<<< HEAD
     created: "2026-03-27T14:42:51.920352305-05:00"
 =======
     created: "2026-03-27T14:45:20.484037663-05:00"
+>>>>>>> main
+=======
+    created: "2026-03-27T14:45:45.887237344-05:00"
 >>>>>>> main
     dependencies:
     - alias: mariadb-subchart
@@ -41,9 +45,13 @@ entries:
       version: v1.34.2
     description: Kubernetes Helm Chart for the latest stable GLERP branch
 <<<<<<< HEAD
+<<<<<<< HEAD
     digest: ead9d1d85fedd64876e04b41b957603b6e393ef1e346297ab2db8692d251c05e
 =======
     digest: ec4332accf61fd93826e15930271a595150683887361a3f84c112c0d8ea1ccde
+>>>>>>> main
+=======
+    digest: 495aed3666a79b6de43436487be94bb982e4eb6335506dc188396134f3ba97a4
 >>>>>>> main
     icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
     name: glerp
@@ -56,5 +64,9 @@ generated: "2026-03-27T14:42:51.88953543-05:00"
 =======
     - https://green-llama.github.io/helm-glerp/glerp-1.0.16.tgz
     version: 1.0.16
+<<<<<<< HEAD
 generated: "2026-03-27T14:45:20.457237099-05:00"
+>>>>>>> main
+=======
+generated: "2026-03-27T14:45:45.861496555-05:00"
 >>>>>>> main
