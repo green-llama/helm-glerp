@@ -31,11 +31,11 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["bash", "-c"]
-          args:
-            - >
-              set -e;
-              mkdir -p sites;
-              [[ -f sites/common_site_config.json ]] || echo "{}" > sites/common_site_config.json;
+         args:
+           - |
+             set -e
+             mkdir -p sites
+              [[ -f sites/common_site_config.json ]] || echo "{}" > sites/common_site_config.json
               python - <<'PY'
 import json, os, pathlib
 p = pathlib.Path("sites/common_site_config.json")
@@ -48,10 +48,9 @@ cfg.setdefault("redis_socketio", os.environ["REDIS_QUEUE"])
 p.write_text(json.dumps(cfg, indent=2))
 print("common_site_config.json ensured with db/redis settings")
 PY
-
-              echo "Waiting for database to be reachable...";
-              wait-for-it -t 180 $(DB_HOST):$(DB_PORT);
-              echo "Database is reachable.";
+              echo "Waiting for database to be reachable..."
+              wait-for-it -t 180 ${DB_HOST}:${DB_PORT}
+              echo "Database is reachable."
           env:
             - name: "DB_HOST"
               {{- if or .Values.mariadb.enabled (get .Values "mariadb-subchart").enabled }}
