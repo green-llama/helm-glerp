@@ -1,23 +1,24 @@
-# Values for tenant "ciclo" using Longhorn + MinIO architecture
-
+# Cliente y dominio
+fullnameOverride: ""
+nameOverride: ""
 image:
   repository: ghcr.io/green-llama/glerp-image
   tag: dev
   pullPolicy: Always
-
 imagePullSecrets:
   - name: ghcr-cred
 
 serviceAccount:
   create: true
-  name: "ciclo-sa"
-
+  name: ciclo-sa
 rbac:
   secretReader:
     enabled: true
 
+# Puertos explícitos
 nginx:
   service:
+<<<<<<< HEAD
     port: 8080
   livenessProbe:
     tcpSocket:
@@ -25,6 +26,14 @@ nginx:
   readinessProbe:
     tcpSocket:
       port: 8080
+=======
+    type: ClusterIP
+    port: 8080
+  livenessProbe:
+    tcpSocket: { port: 8080 }
+  readinessProbe:
+    tcpSocket: { port: 8080 }
+>>>>>>> main
   environment:
     UPSTREAM_REAL_IP_ADDRESS: "127.0.0.1"
     UPSTREAM_REAL_IP_RECURSIVE: "off"
@@ -33,16 +42,65 @@ nginx:
     PROXY_READ_TIMEOUT: "120"
     CLIENT_MAX_BODY_SIZE: "500m"
 
+worker:
+  gunicorn:
+    service:
+      port: 8000
+    livenessProbe:
+      tcpSocket: { port: 8000 }
+    readinessProbe:
+      tcpSocket: { port: 8000 }
+socketio:
+  service:
+    port: 9000
+  livenessProbe:
+    tcpSocket: { port: 9000 }
+  readinessProbe:
+    tcpSocket: { port: 9000 }
+
+# DB/Cache
+mariadb-sts:
+  enabled: true
+  rootPassword: changeit
+  persistence:
+    size: 8Gi
+    storageClass: longhorn-crypto-mariadb-rwo
+mariadb-subchart:
+  enabled: false
+mariadb:
+  enabled: false
+postgresql:
+  enabled: false
+postgresql-subchart:
+  enabled: false
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: "14"
+
+dragonfly-cache:
+  enabled: true
+dragonfly-queue:
+  enabled: true
+  storage:
+    enabled: false
+redis-cache:
+  enabled: false
+redis-queue:
+  enabled: false
+externalRedis:
+  cache: ""
+  queue: ""
+
 persistence:
   worker:
     enabled: true
     size: 5Gi
     storageClass: longhorn-crypto-rwm
-    accessModes:
-      - ReadWriteMany
+    accessModes: [ReadWriteMany]
   logs:
     enabled: false
 
+<<<<<<< HEAD
 mariadb-sts:
   enabled: true
   image:
@@ -87,11 +145,15 @@ mariadb:
 ingress:
   enabled: false
 
+=======
+>>>>>>> main
 jobs:
+  configure:
+    enabled: true
   createSite:
     enabled: true
     siteName: "ciclo.greenllama.tech"
-    adminPassword: changeit
+    adminPassword: "changeit"
     dbType: mariadb
     installApps:
       - erpnext
@@ -113,13 +175,8 @@ jobs:
       - posawesome
       - glerp_ai_intake
 
-dragonfly-cache:
-  enabled: true
-
-dragonfly-queue:
-  enabled: true
-  storage:
-    enabled: false
+ingress:
+  enabled: false  # se usa IngressRoute extra abajo
 
 socketio:
   service:
@@ -184,6 +241,41 @@ postgresql-subchart:
   enabled: false
 
 extraObjects:
+  # Namespace + SA + RBAC
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: ciclo
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: ciclo-sa
+      namespace: ciclo
+      labels: { app: glerp }
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: secret-reader
+      namespace: ciclo
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch"]
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: secret-reader-binding
+      namespace: ciclo
+    subjects:
+      - kind: ServiceAccount
+        name: ciclo-sa
+        namespace: ciclo
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: secret-reader
+
+  # CA trust via ESO (certs ya en Vault backend)
   - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
@@ -192,25 +284,10 @@ extraObjects:
       finalizers:
         - externalsecrets.external-secrets.io/externalsecret-cleanup
     spec:
-      refreshInterval: 1h0m0s
+      refreshInterval: 1h
       secretStoreRef:
         kind: ClusterSecretStore
         name: kubernetes-token-auth
-      target:
-        name: apps-ca-trust
-        creationPolicy: Owner
-        deletionPolicy: Retain
-        template:
-          type: Opaque
-          engineVersion: v2
-          data:
-            ca.crt: |
-              {{ .root_ca }}
-              {{ .intermediate_ca }}
-            intermediate.crt: |
-              {{ .intermediate_ca }}
-            root.crt: |
-              {{ .root_ca }}
       data:
         - secretKey: root_ca
           remoteRef:
@@ -220,29 +297,43 @@ extraObjects:
           remoteRef:
             key: apps-int-ca-secret
             property: tls.crt
+      target:
+        name: apps-ca-trust
+        creationPolicy: Owner
+        deletionPolicy: Retain
+        template:
+          engineVersion: v2
+          data:
+            ca.crt: |
+              {{ .root_ca }}
+              {{ .intermediate_ca }}
+            intermediate.crt: |
+              {{ .intermediate_ca }}
+            root.crt: |
+              {{ .root_ca }}
 
+  # Leaf cert para apps del namespace
   - apiVersion: cert-manager.io/v1
     kind: Certificate
     metadata:
       name: ciclo-leaf-cert
       namespace: ciclo
     spec:
+      secretName: ciclo-leaf-cert
       dnsNames:
         - "*.ciclo.svc"
         - "*.ciclo.svc.cluster.local"
         - "*.greenllama.tech"
+      ipAddresses: [127.0.0.1, "::1"]
       duration: 2160h
       renewBefore: 360h
-      ipAddresses:
-        - 127.0.0.1
-        - "::1"
       issuerRef:
-        group: cert-manager.io
         kind: ClusterIssuer
         name: apps-general-signer
-      secretName: ciclo-leaf-cert
+        group: cert-manager.io
 
-  - apiVersion: external-secrets.io/v1
+  # ExternalSecret para credenciales de MinIO
+  - apiVersion: external-secrets.io/v1beta1
     kind: ExternalSecret
     metadata:
       name: ciclo-minio-creds
@@ -266,59 +357,24 @@ extraObjects:
       data:
         - secretKey: accesskey
           remoteRef:
-            key: secret/data/ciclo/minio-creds
+            key: secret/data/greenllama/minio-creds
             property: accesskey
         - secretKey: secretkey
           remoteRef:
-            key: secret/data/ciclo/minio-creds
+            key: secret/data/greenllama/minio-creds
             property: secretkey
 
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      name: ciclo
-      namespace: traefik-system
-      annotations:
-        kubernetes.io/ingress.class: traefik
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`ciclo.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: glerp
-              namespace: ciclo
-              port: 8080
-              scheme: http
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
-
-  - apiVersion: traefik.io/v1alpha1
-    kind: IngressRoute
-    metadata:
-      name: minio-ciclo
-      namespace: ciclo
-      annotations:
-        kubernetes.io/ingress.class: traefik
-    spec:
-      entryPoints:
-        - websecure
-      routes:
-        - kind: Rule
-          match: Host(`minio-ciclo.greenllama.tech`) && PathPrefix(`/`)
-          services:
-            - name: minio
-              port: 80
-      tls:
-        secretName: letsencrypt-greenllama-tech-tls
-
+  # MinIO Tenant (usa secret de vault vía ESO)
   - apiVersion: minio.min.io/v2
     kind: Tenant
     metadata:
       name: ciclo-minio-tenant
       namespace: ciclo
     spec:
+      buckets:
+        - name: ciclo
+          objectLock: false
+          region: us-east-1
       mountPath: /export
       configuration:
         name: ciclo-minio-creds
@@ -330,33 +386,25 @@ extraObjects:
         - name: MINIO_KMS_VAULT_ENABLE
           value: "on"
         - name: MINIO_KMS_VAULT_ENDPOINT
-          value: http://vault-active.vault-system.svc.cluster.local:8200
+          value: "http://vault-active.vault-system.svc.cluster.local:8200"
         - name: MINIO_KMS_VAULT_AUTH_TYPE
-          value: jwt
+          value: "jwt"
         - name: MINIO_KMS_VAULT_ROLE
-          value: ciclo-role
+          value: "ciclo-role"
         - name: MINIO_KMS_VAULT_KEY_NAME
-          value: minio-key
+          value: "minio-key"
         - name: MINIO_KMS_VAULT_JWT_PATH
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
-      buckets:
-        - name: ciclo
-          region: us-east-1
-          objectLock: false
+          value: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       pools:
         - name: pool-0
           servers: 2
           volumesPerServer: 2
           volumeClaimTemplate:
-            metadata:
-              name: data
+            metadata: { name: data }
             spec:
-              accessModes:
-                - ReadWriteOnce
+              accessModes: [ReadWriteOnce]
               storageClassName: directpv-min-io
-              resources:
-                requests:
-                  storage: 512Mi
+              resources: { requests: { storage: 512Mi } }
           containerSecurityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -368,15 +416,11 @@ extraObjects:
           servers: 2
           volumesPerServer: 2
           volumeClaimTemplate:
-            metadata:
-              name: data
+            metadata: { name: data }
             spec:
-              accessModes:
-                - ReadWriteOnce
+              accessModes: [ReadWriteOnce]
               storageClassName: directpv-min-io
-              resources:
-                requests:
-                  storage: 512Mi
+              resources: { requests: { storage: 512Mi } }
           containerSecurityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -399,3 +443,43 @@ extraObjects:
       podManagementPolicy: Parallel
       subPath: /data
       serviceAccountName: ciclo-sa
+
+  # IngressRoute para MinIO (Traefik)
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: minio-ciclo
+      namespace: ciclo
+      annotations:
+        kubernetes.io/ingress.class: traefik
+    spec:
+      entryPoints: [websecure]
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+      routes:
+        - match: Host(`minio-ciclo.greenllama.tech`) && PathPrefix(`/`)
+          kind: Rule
+          services:
+            - name: minio
+              port: 80
+
+  # IngressRoute para GLerp (UI)
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: ciclo
+      namespace: traefik-system
+      annotations:
+        kubernetes.io/ingress.class: traefik
+    spec:
+      entryPoints: [websecure]
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+      routes:
+        - match: Host(`ciclo.greenllama.tech`) && PathPrefix(`/`)
+          kind: Rule
+          services:
+            - name: glerp
+              namespace: ciclo
+              port: 8080
+              scheme: http
