@@ -89,7 +89,7 @@ jobs:
       - glerp_frappe_theme
       - erpnext_email_parser
       - glerp_branding
-      - hrms
+#      - hrms  -- Issues during install
       - dfp_external_storage
       - glerp_webtools
       - glerp_bigbulk_import
@@ -252,7 +252,7 @@ extraObjects:
         group: cert-manager.io
 
   # ExternalSecret para credenciales de MinIO
-  - apiVersion: external-secrets.io/v1beta1
+  - apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       name: ciclo-minio-creds
