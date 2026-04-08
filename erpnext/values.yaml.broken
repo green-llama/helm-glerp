@@ -1,0 +1,253 @@
+image:
+  repository: ghcr.io/green-llama/glerp-image
+  tag: dev
+  pullPolicy: Always
+imagePullSecrets: []
+serviceAccount:
+  create: true
+  name: ""
+rbac:
+  secretReader:
+    enabled: false
+
+# DB/Cache defaults
+mariadb-sts:
+  enabled: true
+  rootPassword: changeit
+  persistence:
+    size: 8Gi
+    storageClass: ""   # override per cliente
+mariadb-subchart:
+  enabled: false
+mariadb:
+  enabled: false
+postgresql:
+  enabled: false
+postgresql-subchart:
+  enabled: false
+  image:
+    repository: bitnamilegacy/postgresql
+    tag: "14"
+
+dragonfly-cache:
+  enabled: true
+dragonfly-queue:
+  enabled: true
+  storage:
+    enabled: false
+redis-cache:
+  enabled: false
+redis-queue:
+  enabled: false
+externalRedis:
+  cache: ""
+  queue: ""
+
+nginx:
+  service:
+    type: ClusterIP
+    port: 8080
+  livenessProbe:
+    tcpSocket: { port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    tcpSocket: { port: 8080 }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  environment:
+    upstreamRealIPAddress: "127.0.0.1"
+    upstreamRealIPRecursive: "off"
+    upstreamRealIPHeader: "X-Forwarded-For"
+    frappeSiteNameHeader: "$host"
+    proxyReadTimeout: "120"
+    clientMaxBodySize: "50m"
+
+worker:
+  gunicorn:
+    service:
+      type: ClusterIP
+      port: 8000
+    livenessProbe:
+      tcpSocket: { port: 8000 }
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      tcpSocket: { port: 8000 }
+      initialDelaySeconds: 5
+      periodSeconds: 10
+  healthProbe: |
+    exec:
+      command:
+        - bash
+        - -c
+        - |-
+          echo "Pinging backing services";
+          {{- if (index .Values "mariadb-sts").enabled }}
+          wait-for-it {{ include "erpnext.fullname" . }}-mariadb-sts:3306 -t 1;
+          {{- else if (index .Values "postgresql-sts").enabled }}
+          wait-for-it {{ include "erpnext.fullname" . }}-postgresql-sts:5432 -t 1;
+          {{- else if or .Values.mariadb.enabled (get .Values "mariadb-subchart").enabled }}
+          wait-for-it {{ .Release.Name }}-mariadb-subchart:3306 -t 1;
+          {{- else if or .Values.postgresql.enabled (get .Values "postgresql-subchart").enabled }}
+          wait-for-it {{ .Release.Name }}-postgresql-subchart:5432 -t 1;
+          {{- else if .Values.dbHost }}
+          wait-for-it {{ .Values.dbHost }}:{{ .Values.dbPort }} -t 1;
+          {{- end }}
+          {{- if .Values.externalRedis.cache }}
+          wait-for-it $(echo {{ .Values.externalRedis.cache }} | sed 's,redis://,,') -t 1;
+          {{- else if (index .Values "dragonfly-cache").enabled }}
+          wait-for-it {{ .Release.Name }}-dragonfly-cache:6379 -t 1;
+          {{- end }}
+          {{- if .Values.externalRedis.queue }}
+          wait-for-it $(echo {{ .Values.externalRedis.queue }} | sed 's,redis://,,') -t 1;
+          {{- else if (index .Values "dragonfly-queue").enabled }}
+          wait-for-it {{ .Release.Name }}-dragonfly-queue:6379 -t 1;
+          {{- end }}
+    initialDelaySeconds: 15
+    periodSeconds: 5
+    timeoutSeconds: 5
+
+socketio:
+  service:
+    type: ClusterIP
+    port: 9000
+  livenessProbe:
+    tcpSocket: { port: 9000 }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    tcpSocket: { port: 9000 }
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+persistence:
+  worker:
+    enabled: true
+    size: 5Gi
+    storageClass: ""    # override per cliente
+    accessModes: [ReadWriteMany]
+  logs:
+    enabled: false
+    size: 5Gi
+    accessModes: [ReadWriteMany]
+
+jobs:
+  configure:
+    enabled: true
+  createSite:
+    enabled: false   # se habilita en el override de cliente
+    siteName: ""
+    adminPassword: changeit
+    dbType: mariadb
+    installApps:
+      - erpnext
+      - payments
+      - webshop
+      - hrms
+      - frappe_theme
+      - erpnext_email_parser
+      - glerp_branding
+      - glerp_audience
+      - glerp_braintree_webhooks
+      - glerp_ai_intake
+      - dfp_external_storage
+      - glerp_webtools
+      - glerp_bigbulk_import
+      - newsletter
+      - blog
+      - eps
+      - offsite_backups
+      - posawesome
+  volumePermissions:
+    enabled: false
+
+<<<<<<< HEAD
+  backup:
+    # jobName: ""
+    enabled: false
+    siteName: "erp.cluster.local"
+    withFiles: true
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  migrate:
+    # jobName: ""
+    enabled: false
+    siteName: "erp.cluster.local"
+    skipFailing: false
+    backoffLimit: 0
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  custom:
+    enabled: false
+    jobName: ""
+    labels: {}
+    backoffLimit: 0
+    initContainers: []
+    containers: []
+    restartPolicy: Never
+    volumes: []
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+
+# RBAC for reading secrets (used by some tenants); disabled by default
+rbac:
+  secretReader:
+    enabled: false
+    # Optional overrides for the generated Role/RoleBinding names
+    name: ""
+    bindingName: ""
+
+podSecurityContext:
+  supplementalGroups: [1000]
+
+securityContext:
+  capabilities:
+    add:
+    - CAP_CHOWN
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+mariadb-sts:
+  enabled: true
+  image:
+    repository: mariadb
+    tag: "10.6"
+    pullPolicy: IfNotPresent
+  rootPassword: "changeit"
+  persistence:
+    storageClass: longhorn
+    size: 8Gi
+  resources: {}
+  myCnf: |
+    [mysqld]
+    skip-character-set-client-handshake
+    skip-innodb-read-only-compressed
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+
+
+mariadb-subchart:
+  # To enable the classic Bitnami MariaDB subchart, set enabled to true
+  # and set mariadb-sts.enabled to false.
+=======
+ingress:
+>>>>>>> main
+  enabled: false
+extraObjects: []

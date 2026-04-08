@@ -23,5 +23,5 @@ metadata:
   name: {{ include "erpnext.fullname" . }}-mariadb-sts
 data:
   my.cnf: |
-{{ (index .Values "mariadb-sts").myCnf | indent 4 }}
+{{ printf "%s" ((index .Values "mariadb-sts").myCnf | default "") | indent 4 }}
 {{- end }}

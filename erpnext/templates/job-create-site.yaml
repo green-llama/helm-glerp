@@ -33,19 +33,21 @@ spec:
           command: ["bash", "-c"]
           args:
             - >
-              export start=`date +%s`;
-              until [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty"` ]] && \
-                [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty"` ]] && \
-                [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_queue // empty"` ]];
-              do
-                echo "Waiting for sites/common_site_config.json to be created";
-                sleep 5;
-                if (( `date +%s`-start > 600 )); then
-                  echo "could not find sites/common_site_config.json with required keys";
-                  exit 1
-                fi
-              done;
-              echo "sites/common_site_config.json found";
+              set -e;
+              mkdir -p sites;
+              [[ -f sites/common_site_config.json ]] || echo "{}" > sites/common_site_config.json;
+              python - <<'PY'
+import json, os, pathlib
+p = pathlib.Path("sites/common_site_config.json")
+cfg = json.loads(p.read_text() or "{}")
+cfg.setdefault("db_host", os.environ["DB_HOST"])
+cfg.setdefault("db_port", int(os.environ["DB_PORT"]))
+cfg.setdefault("redis_cache", os.environ["REDIS_CACHE"])
+cfg.setdefault("redis_queue", os.environ["REDIS_QUEUE"])
+cfg.setdefault("redis_socketio", os.environ["REDIS_QUEUE"])
+p.write_text(json.dumps(cfg, indent=2))
+print("common_site_config.json ensured with db/redis settings")
+PY
 
               echo "Waiting for database to be reachable...";
               wait-for-it -t 180 $(DB_HOST):$(DB_PORT);
@@ -74,6 +76,26 @@ spec:
               value: "3306"
               {{- else if eq .Values.jobs.createSite.dbType "postgres" }}
               value: "5432"
+              {{- end }}
+            - name: "REDIS_CACHE"
+              {{- if .Values.externalRedis.cache }}
+              value: {{ .Values.externalRedis.cache | quote }}
+              {{- else if (get .Values "dragonfly-cache").enabled }}
+              value: redis://{{ .Release.Name }}-dragonfly-cache:6379
+              {{- else if (get .Values "redis-cache").enabled }}
+              value: redis://{{ .Release.Name }}-redis-cache-master:6379
+              {{- else }}
+              value: ""
+              {{- end }}
+            - name: "REDIS_QUEUE"
+              {{- if .Values.externalRedis.queue }}
+              value: {{ .Values.externalRedis.queue | quote }}
+              {{- else if (get .Values "dragonfly-queue").enabled }}
+              value: redis://{{ .Release.Name }}-dragonfly-queue:6379
+              {{- else if (get .Values "redis-queue").enabled }}
+              value: redis://{{ .Release.Name }}-redis-queue-master:6379
+              {{- else }}
+              value: ""
               {{- end }}
           resources:
             {{- toYaml .Values.jobs.createSite.resources | nindent 12 }}
