@@ -17,6 +17,14 @@ rbac:
     enabled: true
 
 nginx:
+  service:
+    port: 8080
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+  readinessProbe:
+    tcpSocket:
+      port: 8080
   environment:
     UPSTREAM_REAL_IP_ADDRESS: "127.0.0.1"
     UPSTREAM_REAL_IP_RECURSIVE: "off"
@@ -113,7 +121,26 @@ dragonfly-queue:
   storage:
     enabled: false
 
+socketio:
+  service:
+    port: 9000
+  livenessProbe:
+    tcpSocket:
+      port: 9000
+  readinessProbe:
+    tcpSocket:
+      port: 9000
+
 worker:
+  gunicorn:
+    service:
+      port: 8000
+    livenessProbe:
+      tcpSocket:
+        port: 8000
+    readinessProbe:
+      tcpSocket:
+        port: 8000
   healthProbe: |
     exec:
       command:
