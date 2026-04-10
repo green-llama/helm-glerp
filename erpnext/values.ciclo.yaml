@@ -398,3 +398,28 @@ extraObjects:
               namespace: ciclo
               port: 8080
               scheme: http
+#jobs:
+#  custom:
+#    enabled: true
+#    jobName: install-new-apps
+#    backoffLimit: 0
+#    restartPolicy: Never
+#    containers:
+#      - name: install-apps
+#        image: ghcr.io/green-llama/glerp-image:dev   # tu nueva imagen
+#        imagePullPolicy: Always
+#        command: ["bash","-c"]
+#        args:
+#          - |
+#            set -e
+#            SITE=${SITE_NAME:-ciclo.greenllama.tech}
+#            for app in my_new_app another_app; do
+#              if ! bench --site "$SITE" list-apps | grep -qx "$app"; then
+#                bench --site "$SITE" install-app "$app"
+#              else
+#                echo "$app ya instalado, saltando"
+#              fi
+#            done
+#        env:
+#          - name: SITE_NAME
+#            value: "ciclo.greenllama.tech"
