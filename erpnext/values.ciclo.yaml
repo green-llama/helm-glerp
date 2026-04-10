@@ -86,14 +86,14 @@ jobs:
       - erpnext
       - payments
       - webshop
-      - glerp_frappe_theme
+      - frappe_theme # This is the name listed in the image and not what is listed in GH -> glerp_frappe_theme
       - erpnext_email_parser
       - glerp_branding
 #      - hrms  -- Issues during install
       - dfp_external_storage
       - glerp_webtools
       - glerp_bigbulk_import
-      - glerp_braintree_webhooks
+      - glerp_braintree_webhooks # this also has issues Not Module Found
       - glerp_audience
       - newsletter
       - blog
@@ -161,10 +161,6 @@ worker:
 
 extraObjects:
   # Namespace + SA + RBAC
-  - apiVersion: v1
-    kind: Namespace
-    metadata:
-      name: ciclo
   - apiVersion: v1
     kind: ServiceAccount
     metadata:
