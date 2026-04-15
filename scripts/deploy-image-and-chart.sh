@@ -10,7 +10,7 @@ set -euo pipefail
 # Environment overrides:
 #   IMAGE_TAG      (default: ghcr.io/green-llama/glerp-image:dev)
 #   FRAPPE_PATH    (default: https://github.com/green-llama/frappe-gl)
-#   FRAPPE_BRANCH  (default: develop)
+#   FRAPPE_BRANCH  (default: version-16)
 #   APPS_JSON      (default: /home/greenllama/frappe_docker_dev/development/apps.json)
 #   HELM_ROOT      (default: /home/greenllama/helm-glerp)
 #   BUILD_CONTEXT  (default: /home/greenllama/frappe_docker_dev)
@@ -23,6 +23,15 @@ APPS_JSON="${APPS_JSON:-/home/greenllama/frappe_docker_dev/development/apps.json
 HELM_ROOT="${HELM_ROOT:-/home/greenllama/helm-glerp}"
 BUILD_CONTEXT="${BUILD_CONTEXT:-/home/greenllama/frappe_docker_dev}"
 DOCKERFILE="${DOCKERFILE:-images/layered/Containerfile}"
+
+print_build_config() {
+  echo "=== Build configuration ==="
+  echo "IMAGE_TAG: ${IMAGE_TAG}"
+  echo "FRAPPE_PATH: ${FRAPPE_PATH}"
+  echo "FRAPPE_BRANCH: ${FRAPPE_BRANCH}"
+  echo "BUILD_CONTEXT: ${BUILD_CONTEXT}"
+  echo "DOCKERFILE: ${DOCKERFILE}"
+}
 
 build_image() {
   echo "=== Building image ${IMAGE_TAG} ==="
@@ -62,6 +71,7 @@ release_chart() {
 }
 
 main() {
+  print_build_config
   build_image
   push_image
   release_chart
