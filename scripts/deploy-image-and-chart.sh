@@ -18,7 +18,7 @@ set -euo pipefail
 
 IMAGE_TAG="${IMAGE_TAG:-ghcr.io/green-llama/glerp-image:dev}"
 FRAPPE_PATH="${FRAPPE_PATH:-https://github.com/green-llama/frappe-gl}"
-FRAPPE_BRANCH="${FRAPPE_BRANCH:-develop}"
+FRAPPE_BRANCH="${FRAPPE_BRANCH:-version-16}"
 APPS_JSON="${APPS_JSON:-/home/greenllama/frappe_docker_dev/development/apps.json}"
 HELM_ROOT="${HELM_ROOT:-/home/greenllama/helm-glerp}"
 BUILD_CONTEXT="${BUILD_CONTEXT:-/home/greenllama/frappe_docker_dev}"
