@@ -186,8 +186,8 @@ spec:
             {{- if (get .Values "mariadb-sts").enabled }}
             valueFrom:
               secretKeyRef:
-                key: mariadb-root-password
-                name: {{ template "erpnext.fullname" . }}
+                key: {{ include "glerp.mariadbRootSecretKey" . | quote }}
+                name: {{ include "glerp.mariadbRootSecretName" . | quote }}
             {{- else if (index .Values "postgresql-sts").enabled }}
             valueFrom:
               secretKeyRef:
