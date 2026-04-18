@@ -33,6 +33,268 @@ extraObjects:
               scheme: http
       tls:
         secretName: letsencrypt-greenllama-tech-tls
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      finalizers:
+        - externalsecrets.external-secrets.io/externalsecret-cleanup
+      name: "apps-ca-trust"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      data:
+        - remoteRef:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: root-ca-secret
+            metadataPolicy: None
+            property: tls.crt
+          secretKey: root_ca
+        - remoteRef:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: apps-int-ca-secret
+            metadataPolicy: None
+            property: tls.crt
+          secretKey: intermediate_ca
+      refreshInterval: 1h0m0s
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: kubernetes-token-auth
+      target:
+        creationPolicy: Owner
+        deletionPolicy: Retain
+        name: apps-ca-trust
+        template:
+          data:
+            ca.crt: |
+              {{ .root_ca }}
+              {{ .intermediate_ca }}
+            intermediate.crt: |
+              {{ .intermediate_ca }}
+            root.crt: |
+              {{ .root_ca }}
+          engineVersion: v2
+          mergePolicy: Replace
+          metadata: {}
+          type: Opaque
+  - apiVersion: cert-manager.io/v1
+    kind: Certificate
+    metadata:
+      name: "{{helmVar_TENANT_NAMESPACE}}-leaf-cert"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      dnsNames:
+        - "*.{{helmVar_TENANT_NAMESPACE}}.svc"
+        - "*.{{helmVar_TENANT_NAMESPACE}}.svc.cluster.local"
+        - "*.{{helmVar_DOMAIN}}"
+      duration: 2160h
+      ipAddresses:
+        - 127.0.0.1
+        - "::1"
+      issuerRef:
+        group: cert-manager.io
+        kind: ClusterIssuer
+        name: apps-general-signer
+      renewBefore: 360h
+      secretName: "{{helmVar_TENANT_NAMESPACE}}-leaf-cert"
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: "{{helmVar_TENANT_NAMESPACE}}-minio-creds"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault-backend
+      target:
+        name: "{{helmVar_TENANT_NAMESPACE}}-minio-creds"
+        creationPolicy: Owner
+        template:
+          engineVersion: v2
+          data:
+            accesskey: "{{ .accesskey }}"
+            secretkey: "{{ .secretkey }}"
+            config.env: |
+              export MINIO_ROOT_USER="{{ .accesskey }}"
+              export MINIO_ROOT_PASSWORD="{{ .secretkey }}"
+      data:
+        - secretKey: accesskey
+          remoteRef:
+            key: "secret/data/{{helmVar_TENANT_NAMESPACE}}/minio-creds"
+            property: accesskey
+        - secretKey: secretkey
+          remoteRef:
+            key: "secret/data/{{helmVar_TENANT_NAMESPACE}}/minio-creds"
+            property: secretkey
+  - apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      name: "minio-{{helmVar_TENANT_NAMESPACE}}"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: "{{helmVar_TENANT_NAMESPACE}}.{{helmVar_DOMAIN}}"
+        external-dns.alpha.kubernetes.io/target: "pec.greenllama.tech"
+        kubernetes.io/ingress.class: traefik
+    spec:
+      entryPoints:
+        - websecure
+      tls:
+        secretName: letsencrypt-greenllama-tech-tls
+      routes:
+        - match: Host(`minio-{{helmVar_TENANT_NAMESPACE}}.{{helmVar_DOMAIN}}`) && PathPrefix(`/`)
+          kind: Rule
+          services:
+            - name: minio
+              port: 80
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: "{{helmVar_TENANT_NAMESPACE}}-mariadb-root"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault-backend
+      target:
+        name: "{{helmVar_TENANT_NAMESPACE}}-mariadb-root"
+        creationPolicy: Owner
+        deletionPolicy: Retain
+        template:
+          engineVersion: v2
+          mergePolicy: Replace
+          data:
+            mariadb-root-password: '{{ index . "mariadb-root-password" }}'
+      data:
+        - secretKey: mariadb-root-password
+          remoteRef:
+            key: "secret/data/{{helmVar_TENANT_NAMESPACE}}/{{helmVar_TENANT_NAMESPACE}}-mariadb-root"
+            property: mariadb-root-password
+            conversionStrategy: Default
+            decodingStrategy: None
+            metadataPolicy: None
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: ghcr-cred
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault-backend
+      target:
+        name: ghcr-cred
+        template:
+          type: kubernetes.io/dockerconfigjson
+          data:
+            .dockerconfigjson: "{{ .config }}"
+      data:
+        - secretKey: config
+          remoteRef:
+            key: secret/data/github/ghcr-cred
+            property: config
+  - apiVersion: velero.io/v1
+    kind: Schedule
+    metadata:
+      name: "{{helmVar_TENANT_NAMESPACE}}-daily"
+      namespace: velero
+    spec:
+      schedule: "0 2 * * *"
+      template:
+        includedNamespaces:
+          - "{{helmVar_TENANT_NAMESPACE}}"
+        includedClusterResources: true
+        storageLocation: idrive-e2
+        ttl: 720h0m0s
+        defaultVolumesToFsBackup: true
+  - apiVersion: minio.min.io/v2
+    kind: Tenant
+    metadata:
+      name: "{{helmVar_TENANT_NAMESPACE}}-minio-tenant"
+      namespace: "{{helmVar_TENANT_NAMESPACE}}"
+    spec:
+      buckets:
+        - name: "{{helmVar_TENANT_NAMESPACE}}"
+          objectLock: false
+          region: us-east-1
+      mountPath: /export
+      configuration:
+        name: "{{helmVar_TENANT_NAMESPACE}}-minio-creds"
+      env:
+        - name: MINIO_SERVER_URL
+          value: "https://minio-{{helmVar_TENANT_NAMESPACE}}.{{helmVar_DOMAIN}}"
+        - name: MINIO_BROWSER_REDIRECT_URL
+          value: "https://minio-{{helmVar_TENANT_NAMESPACE}}.{{helmVar_DOMAIN}}"
+        - name: MINIO_KMS_VAULT_ENABLE
+          value: "on"
+        - name: MINIO_KMS_VAULT_ENDPOINT
+          value: "http://vault-active.vault-system.svc.cluster.local:8200"
+        - name: MINIO_KMS_VAULT_AUTH_TYPE
+          value: "jwt"
+        - name: MINIO_KMS_VAULT_ROLE
+          value: "{{helmVar_TENANT_NAMESPACE}}-role"
+        - name: MINIO_KMS_VAULT_KEY_NAME
+          value: "minio-key"
+        - name: MINIO_KMS_VAULT_JWT_PATH
+          value: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      pools:
+        - name: pool-0
+          servers: 2
+          volumesPerServer: 2
+          volumeClaimTemplate:
+            metadata:
+              name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: directpv-min-io
+              resources:
+                requests:
+                  storage: 512Mi
+          containerSecurityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          securityContext:
+            fsGroup: 1000
+        - name: pool-1
+          servers: 2
+          volumesPerServer: 2
+          volumeClaimTemplate:
+            metadata:
+              name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              storageClassName: directpv-min-io
+              resources:
+                requests:
+                  storage: 512Mi
+          containerSecurityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          securityContext:
+            fsGroup: 1000
+      poolsMetadata:
+        annotations:
+          sidecar.istio.io/inject: "true"
+          traffic.sidecar.istio.io/includeInboundPorts: "10443"
+          traffic.sidecar.istio.io/includeOutboundPorts: "8200"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9000, 9090"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9000, 9090"
+      requestAutoCert: false
+      prometheusOperator: false
+      features:
+        bucketDNS: false
+        enableSFTP: false
+      podManagementPolicy: Parallel
+      subPath: /data
+      serviceAccountName: "{{helmVar_TENANT_NAMESPACE}}-sa"
 fullnameOverride: ''
 httproute:
   annotations: {}
@@ -295,6 +557,11 @@ securityContext:
       - CAP_CHOWN
 serviceAccount:
   create: true
+rbac:
+  secretReader:
+    enabled: true
+    name: secret-reader
+    bindingName: secret-reader-binding
 socketio:
   affinity: {}
   autoscaling:
