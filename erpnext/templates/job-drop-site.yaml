@@ -52,6 +52,8 @@ spec:
           - name: "DB_ROOT_USER"
             {{- if or .Values.mariadb.enabled (get .Values "mariadb-subchart").enabled }}
             value: "root"
+            {{- else if (get .Values "mariadb-sts").enabled }}
+            value: "root"
             {{- else if or .Values.postgresql.enabled (get .Values "postgresql-subchart").enabled }}
             value: "postgres"
             {{- else }}
