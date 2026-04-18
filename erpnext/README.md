@@ -173,6 +173,8 @@ Kubernetes Helm Chart for ERPNext and Frappe Framework Apps.
 | mariadb-sts.persistence.size | string | `"8Gi"` |  |
 | mariadb-sts.resources | object | `{}` |  |
 | mariadb-sts.rootPassword | string | `"changeit"` |  |
+| mariadb-sts.existingSecret.name | string | `""` | Secret name for MariaDB root password. Takes precedence over `mariadb-sts.rootPassword`. |
+| mariadb-sts.existingSecret.key | string | `"mariadb-root-password"` | Secret key that contains the MariaDB root password. |
 | mariadb-subchart.enabled | bool | `false` |  |
 | mariadb-subchart.image.repository | string | `"bitnamilegacy/mariadb"` |  |
 | mariadb-subchart.image.tag | string | `"10.6.17-debian-11-r10"` |  |
@@ -448,6 +450,13 @@ dbRootUser: "admin"
 dbExistingSecret: "my-external-db-secret"
 dbExistingSecretPasswordKey: "password"
 ```
+
+### Built-in MariaDB Secret Source
+
+When `mariadb-sts.enabled=true`, root credentials are resolved in this order:
+
+1. `mariadb-sts.existingSecret.name` with optional `mariadb-sts.existingSecret.key` (defaults to `mariadb-root-password`)
+2. `mariadb-sts.rootPassword` (chart-managed secret named `<release-fullname>`)
 
 ### Using Bitnami Subcharts (Legacy)
 

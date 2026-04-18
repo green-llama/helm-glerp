@@ -193,8 +193,8 @@ mariadb-sts:
     requests:
       cpu: 500m
       memory: 1Gi
-#  rootPassword: changeit
-  existingSecret:  #RJB update Feb23: use a K8 secret instead of hard coding in chart.  The secret ultimate source is in vault
+#  rootPassword: changeit  # Used only when existingSecret.name is not set
+  existingSecret:  #RJB update Feb23: use a K8 secret instead of hard coding in chart. existingSecret takes precedence over rootPassword.
     name: "{{helmVar_TENANT_NAMESPACE}}-mariadb-root"
     key: "mariadb-root-password"
 mariadb-subchart:

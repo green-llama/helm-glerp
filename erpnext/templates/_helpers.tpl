@@ -97,3 +97,26 @@ Gets the redis cache host name
 {{- define "erpnext.redisCacheHost" -}}
 {{ .Values.redisCacheHost }}
 {{- end -}}
+
+{{/*
+Resolve mariadb-sts root password secret name.
+`mariadb-sts.existingSecret.name` takes precedence over chart-managed secret.
+*/}}
+{{- define "glerp.mariadbRootSecretName" -}}
+{{- $m := (index .Values "mariadb-sts") | default dict -}}
+{{- $existing := (get $m "existingSecret") | default dict -}}
+{{- if (get $existing "name") -}}
+{{- get $existing "name" -}}
+{{- else -}}
+{{- include "erpnext.fullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve mariadb-sts root password secret key.
+*/}}
+{{- define "glerp.mariadbRootSecretKey" -}}
+{{- $m := (index .Values "mariadb-sts") | default dict -}}
+{{- $existing := (get $m "existingSecret") | default dict -}}
+{{- default "mariadb-root-password" (get $existing "key") -}}
+{{- end -}}
