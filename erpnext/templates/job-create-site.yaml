@@ -109,8 +109,52 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command: ["bash", "-c"]
         args:
-          - >
+          - |-
             set -x;
+            {{- if .Values.jobs.createSite.upgradeAppsOnExistingSite }}
+            set -euo pipefail;
+
+            if bench --site "${SITE_NAME}" list-apps > /tmp/installed_apps.txt 2>/dev/null; then
+                echo "Site ${SITE_NAME} already exists, skipping new-site";
+            else
+                echo "Site ${SITE_NAME} not found, creating site";
+                bench new-site ${SITE_NAME} \
+                  --no-mariadb-socket \
+                  --db-type=${DB_TYPE} \
+                  --db-host=${DB_HOST} \
+                  --db-port=${DB_PORT} \
+                  --admin-password=${ADMIN_PASSWORD} \
+                  --mariadb-root-username=${DB_ROOT_USER} \
+                  --mariadb-root-password=${DB_ROOT_PASSWORD} \
+                {{- if .Values.jobs.createSite.forceCreate }}
+                  --force \
+                {{- end }}
+                ;
+                bench --site "${SITE_NAME}" list-apps > /tmp/installed_apps.txt
+            fi
+
+            {{- if .Values.jobs.createSite.installApps }}
+            apps=(
+              {{- range .Values.jobs.createSite.installApps }}
+              "{{ . }}"
+              {{- end }}
+            )
+            for app in "${apps[@]}"; do
+                if grep -Fxq "${app}" /tmp/installed_apps.txt; then
+                    echo "App already installed: ${app}";
+                else
+                    echo "Installing app: ${app}";
+                    bench --site "${SITE_NAME}" install-app "${app}";
+                    echo "${app}" >> /tmp/installed_apps.txt;
+                fi
+            done
+            {{- end }}
+
+            {{- if .Values.jobs.createSite.migrateAfterAppSync }}
+            echo "Running migrate after app sync";
+            bench --site "${SITE_NAME}" migrate;
+            {{- end }}
+            {{- else }}
 
             bench_output=$(bench new-site ${SITE_NAME} \
               --no-mariadb-socket \
@@ -143,8 +187,9 @@ spec:
             fi
 
             set -e;
+            {{- end }}
 
-            rm -f currentsite.txt
+            rm -f currentsite.txt /tmp/installed_apps.txt
         env:
           - name: "SITE_NAME"
             value: "{{ .Values.jobs.createSite.siteName }}"
