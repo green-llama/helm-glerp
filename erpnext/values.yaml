@@ -380,7 +380,7 @@ jobs:
     resources: {}
     siteName: "{{helmVar_TENANT_NAMESPACE}}.{{helmVar_DOMAIN}}"    #RJB: need to update this with customer name variable and domain
     tolerations: []
-    upgradeAppsOnExistingSite: false
+    upgradeAppsOnExistingSite: true
   custom:
     affinity: {}
     backoffLimit: 0

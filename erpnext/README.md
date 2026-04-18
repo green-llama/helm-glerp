@@ -133,7 +133,7 @@ Kubernetes Helm Chart for ERPNext and Frappe Framework Apps.
 | jobs.createSite.resources | object | `{}` |  |
 | jobs.createSite.siteName | string | `"erp.cluster.local"` |  |
 | jobs.createSite.tolerations | list | `[]` |  |
-| jobs.createSite.upgradeAppsOnExistingSite | bool | `false` | If true, skip `new-site` for existing sites and install only missing apps from `installApps` during upgrades. |
+| jobs.createSite.upgradeAppsOnExistingSite | bool | `true` | If true, skip `new-site` for existing sites and install only missing apps from `installApps` during upgrades. |
 | jobs.custom.affinity | object | `{}` |  |
 | jobs.custom.backoffLimit | int | `0` |  |
 | jobs.custom.containers | list | `[]` |  |
@@ -534,7 +534,7 @@ jobs:
 
 Note: `erp.example.com` must be configured DNS entry and change the `adminPassword` to something more secure.
 
-For upgrade-safe app reconciliation on existing tenants, you can enable idempotent mode:
+Idempotent mode is enabled by default for upgrade-safe app reconciliation on existing tenants:
 
 ```yaml
 jobs:
@@ -548,6 +548,14 @@ With this mode enabled, the job:
 - skips `bench new-site` when the site already exists,
 - installs only missing apps from `installApps`,
 - runs one `bench --site <site> migrate` at the end (if `migrateAfterAppSync` is `true`).
+
+To opt out and restore legacy behavior:
+
+```yaml
+jobs:
+  createSite:
+    upgradeAppsOnExistingSite: false
+```
 
 Generate Job YAML
 
