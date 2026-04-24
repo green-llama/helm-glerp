@@ -3,7 +3,7 @@ entries:
   glerp:
   - apiVersion: v2
     appVersion: v16.11.0
-    created: "2026-04-19T21:56:08.193094662-05:00"
+    created: "2026-04-24T17:07:00.530791531-05:00"
     dependencies:
     - alias: mariadb-subchart
       condition: mariadb.enabled,mariadb-subchart.enabled
@@ -36,11 +36,11 @@ entries:
       repository: oci://ghcr.io/dragonflydb/dragonfly/helm
       version: v1.34.2
     description: Kubernetes Helm Chart for the latest stable GLERP branch
-    digest: c2d59e9c6a42ed735f73d1a65c29dac47fcfefc9c9de5387b6917de3c4caec9f
+    digest: bc27ba9d549b2ca18e51cd8db0c7b3672428446be7ae244d0cb19896acbace25
     icon: https://raw.githubusercontent.com/green-llama/helm-glerp/main/public/green_llama-logo-color-white.png
     name: glerp
     type: application
     urls:
     - https://green-llama.github.io/helm-glerp/glerp-1.0.25.tgz
     version: 1.0.25
-generated: "2026-04-19T21:56:08.166336814-05:00"
+generated: "2026-04-24T17:07:00.489673834-05:00"
