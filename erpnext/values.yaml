@@ -313,7 +313,7 @@ httproute:
 image:
   pullPolicy: Always
   repository: ghcr.io/green-llama/glerp-image
-  tag: dev
+  tag: 1.0.1
 imagePullSecrets:
   - name: ghcr-cred
 ingress:
