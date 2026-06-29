@@ -17,6 +17,7 @@ set -euo pipefail
 # Notes:
 #   - Requires clean working tree before starting.
 #   - Leaves you on your original branch.
+#   - Uses GITHUB_TOKEN/GH_TOKEN or `gh auth token` for authenticated pushes.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -27,6 +28,50 @@ REPO_DIR="${2:-.helm-repo}"
 REPO_URL="${3:-https://green-llama.github.io/helm-glerp}"
 
 start_branch="$(git rev-parse --abbrev-ref HEAD)"
+askpass_dir=""
+askpass_script=""
+
+cleanup() {
+  if [[ -n "${askpass_dir}" && -d "${askpass_dir}" ]]; then
+    rm -rf "${askpass_dir}"
+  fi
+}
+
+trap cleanup EXIT
+
+setup_github_token_auth() {
+  local github_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+  local token_source="environment"
+
+  if [[ -z "${github_token}" ]] && command -v gh >/dev/null 2>&1; then
+    github_token="$(gh auth token 2>/dev/null || true)"
+    if [[ -n "${github_token}" ]]; then
+      token_source="gh auth token"
+    fi
+  fi
+
+  if [[ -z "${github_token}" ]]; then
+    echo "No GitHub token found. Set GITHUB_TOKEN or GH_TOKEN, or run 'gh auth login'." >&2
+    exit 1
+  fi
+
+  askpass_dir="$(mktemp -d)"
+  askpass_script="${askpass_dir}/git-askpass.sh"
+  cat >"${askpass_script}" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  *Username*) printf '%s\n' 'x-access-token' ;;
+  *) printf '%s\n' "${GITHUB_TOKEN}" ;;
+esac
+EOF
+  chmod 700 "${askpass_script}"
+
+  export GITHUB_TOKEN="${github_token}"
+  export GIT_ASKPASS="${askpass_script}"
+  export GIT_TERMINAL_PROMPT=0
+
+  echo "=== Using GitHub token from ${token_source} for git pushes ==="
+}
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Working tree is dirty. Commit or stash changes first." >&2
@@ -42,6 +87,7 @@ helm repo index "${REPO_DIR}" --url "${REPO_URL}"
 echo "=== Committing chart changes on main ==="
 git add "${CHART_DIR}/Chart.yaml" "${REPO_DIR}/index.yaml" "${REPO_DIR}"/*.tgz
 git commit -m "release $(basename "${CHART_DIR}") $(date +%Y-%m-%d)" || true
+setup_github_token_auth
 git push origin main
 
 echo "=== Publishing to gh-pages ==="
