@@ -4,7 +4,7 @@ set -euo pipefail
 # One-shot helper to build & push the GLerp image and release the Helm chart.
 # Requirements:
 #   - docker login ghcr.io (token stored in ~/.docker/config.json)
-#   - git credentials configured for pushing to origin (main and gh-pages)
+#   - GitHub token available via GITHUB_TOKEN/GH_TOKEN or `gh auth login`
 #   - helm installed locally
 #
 # Environment overrides:
@@ -15,6 +15,8 @@ set -euo pipefail
 #   HELM_ROOT      (default: /home/greenllama/helm-glerp)
 #   BUILD_CONTEXT  (default: /home/greenllama/frappe_docker_dev)
 #   DOCKERFILE     (default: images/layered/Containerfile, relative to BUILD_CONTEXT)
+#   GITHUB_TOKEN   (optional, used for authenticated pushes)
+#   GH_TOKEN       (optional, used for authenticated pushes)
 
 IMAGE_TAG="${IMAGE_TAG:-ghcr.io/green-llama/glerp-image:dev}"
 FRAPPE_PATH="${FRAPPE_PATH:-https://github.com/green-llama/frappe-gl}"
