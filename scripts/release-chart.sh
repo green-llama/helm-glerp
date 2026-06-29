@@ -21,7 +21,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GITHUB_TOKEN="ghp_XywDRIRtCqDhlmFUprr4Sk1v8metda1qSKEz"
 cd "${REPO_ROOT}"
 
 CHART_DIR="${1:-erpnext}"
