@@ -26,6 +26,7 @@ cd "${REPO_ROOT}"
 CHART_DIR="${1:-erpnext}"
 REPO_DIR="${2:-.helm-repo}"
 REPO_URL="${3:-https://green-llama.github.io/helm-glerp}"
+ALLOW_DIRTY_CHART_CHANGES="${ALLOW_DIRTY_CHART_CHANGES:-false}"
 
 start_branch="$(git rev-parse --abbrev-ref HEAD)"
 askpass_dir=""
@@ -35,9 +36,20 @@ cleanup() {
   if [[ -n "${askpass_dir}" && -d "${askpass_dir}" ]]; then
     rm -rf "${askpass_dir}"
   fi
+
+  if [[ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)" == "${start_branch}" ]]; then
+    git restore --worktree --staged -- "${REPO_DIR}" >/dev/null 2>&1 || true
+  fi
 }
 
 trap cleanup EXIT
+
+bool_is_true() {
+  case "${1,,}" in
+    1|true|yes|y|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 setup_github_token_auth() {
   local github_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
@@ -74,8 +86,18 @@ EOF
 }
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "Working tree is dirty. Commit or stash changes first." >&2
-  exit 1
+  if bool_is_true "${ALLOW_DIRTY_CHART_CHANGES}"; then
+    while IFS= read -r changed_file; do
+      [[ -z "${changed_file}" ]] && continue
+      if [[ "${changed_file}" != "${CHART_DIR}/"* ]]; then
+        echo "Working tree contains non-chart changes: ${changed_file}" >&2
+        exit 1
+      fi
+    done < <(git status --porcelain | awk '{print $2}')
+  else
+    echo "Working tree is dirty. Commit or stash changes first." >&2
+    exit 1
+  fi
 fi
 
 echo "=== Rebuilding ${REPO_DIR} ==="
@@ -85,7 +107,7 @@ helm package "${CHART_DIR}" -d "${REPO_DIR}"
 helm repo index "${REPO_DIR}" --url "${REPO_URL}"
 
 echo "=== Committing chart changes on main ==="
-git add "${CHART_DIR}/Chart.yaml" "${REPO_DIR}/index.yaml" "${REPO_DIR}"/*.tgz
+git add "${CHART_DIR}/Chart.yaml" "${CHART_DIR}/values.yaml" "${REPO_DIR}/index.yaml" "${REPO_DIR}"/*.tgz
 git commit -m "release $(basename "${CHART_DIR}") $(date +%Y-%m-%d)" || true
 setup_github_token_auth
 git push origin main
@@ -103,5 +125,6 @@ git push origin gh-pages
 
 echo "=== Restoring branch ${start_branch} ==="
 git checkout "${start_branch}"
+git restore --worktree --staged -- "${REPO_DIR}" >/dev/null 2>&1 || true
 
 echo "Done. Rancher can now refresh the repo URL: ${REPO_URL}"
