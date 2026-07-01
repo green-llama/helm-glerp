@@ -107,7 +107,7 @@ helm package "${CHART_DIR}" -d "${REPO_DIR}"
 helm repo index "${REPO_DIR}" --url "${REPO_URL}"
 
 echo "=== Committing chart changes on main ==="
-git add "${CHART_DIR}/Chart.yaml" "${REPO_DIR}/index.yaml" "${REPO_DIR}"/*.tgz
+git add "${CHART_DIR}/Chart.yaml" "${CHART_DIR}/values.yaml" "${REPO_DIR}/index.yaml" "${REPO_DIR}"/*.tgz
 git commit -m "release $(basename "${CHART_DIR}") $(date +%Y-%m-%d)" || true
 setup_github_token_auth
 git push origin main
